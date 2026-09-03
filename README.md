@@ -17,6 +17,20 @@ Early scaffold (v0). Read-only commands only.
 - The [Railway CLI](https://docs.railway.com/guides/cli) installed and logged in
   (`railway login`)
 
+## Install
+
+Not on npm yet, so `npx -y railway-axi` does not work. Install from a clone:
+
+```sh
+git clone https://github.com/simkimsia/railway-axi
+pnpm --prefix railway-axi install
+pnpm --prefix railway-axi run build
+pnpm --prefix railway-axi link --global   # puts `railway-axi` on PATH
+```
+
+Check it: `railway-axi --version`. To update later, `git pull` in the clone
+and run the build step again.
+
 ## Usage
 
 ```sh
