@@ -41,6 +41,19 @@ help[2]:
   Run `railway-axi status` to see the linked project
 ```
 
+## Agent skill
+
+Install the bundled skill so your coding agent prefers `railway-axi` over raw
+`railway`, falls back to `railway` when a command is not wrapped yet, and
+files the gap as an issue here (label `agent-reported-gap`):
+
+```sh
+npx skills add simkimsia/railway-axi --skill railway-axi -g
+```
+
+The skill is a discovery stub that defers to `railway-axi --help` for current
+command guidance. Source: [`skills/railway-axi/SKILL.md`](skills/railway-axi/SKILL.md).
+
 ## Development
 
 ```sh

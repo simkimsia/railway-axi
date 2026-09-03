@@ -20,6 +20,7 @@
   },
   "files": [
     "dist",
+    "skills/railway-axi",
     "LICENSE",
     "README.md"
   ],
