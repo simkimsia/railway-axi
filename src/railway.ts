@@ -37,29 +37,103 @@ function run(args: string[]): Promise<ExecResult> {
   });
 }
 
-/** Execute railway and return parsed JSON. */
-export async function railwayJson<T = unknown>(args: string[]): Promise<T> {
-  const result = await run(args);
-  if (result.stderr === "ENOENT") throw railwayNotInstalledError();
-  if (result.exitCode !== 0) {
-    throw mapRailwayError(result.stderr || result.stdout, result.exitCode);
-  }
-  try {
-    return JSON.parse(result.stdout) as T;
-  } catch {
-    throw new AxiError(
-      `Unexpected railway output: ${result.stdout.slice(0, 200)}`,
-      "UNKNOWN",
-    );
-  }
-}
-
-/** Execute railway and return raw stdout. */
-export async function railwayExec(args: string[]): Promise<string> {
+async function runChecked(args: string[]): Promise<string> {
   const result = await run(args);
   if (result.stderr === "ENOENT") throw railwayNotInstalledError();
   if (result.exitCode !== 0) {
     throw mapRailwayError(result.stderr || result.stdout, result.exitCode);
   }
   return result.stdout;
+}
+
+/** Execute railway and return parsed JSON. */
+export async function railwayJson<T = unknown>(args: string[]): Promise<T> {
+  const stdout = await runChecked(args);
+  try {
+    return JSON.parse(stdout) as T;
+  } catch {
+    throw new AxiError(
+      `Unexpected railway output: ${stdout.slice(0, 200)}`,
+      "UNKNOWN",
+    );
+  }
+}
+
+export interface NdjsonResult<T> {
+  rows: T[];
+  /** Lines that were not valid JSON and were skipped. */
+  skipped: number;
+}
+
+/**
+ * Parse newline-delimited JSON (`railway logs --json` emits one object per
+ * line, not an array). Blank lines are ignored; unparseable lines are counted
+ * rather than failing the whole call, since one garbled log line should not
+ * hide the other 99.
+ */
+export function parseNdjson<T = unknown>(text: string): NdjsonResult<T> {
+  const rows: T[] = [];
+  let skipped = 0;
+  for (const line of text.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed === "") continue;
+    try {
+      rows.push(JSON.parse(trimmed) as T);
+    } catch {
+      skipped++;
+    }
+  }
+  return { rows, skipped };
+}
+
+/** Execute railway and parse NDJSON stdout. */
+export async function railwayNdjson<T = unknown>(
+  args: string[],
+): Promise<NdjsonResult<T>> {
+  return parseNdjson<T>(await runChecked(args));
+}
+
+/** Execute railway and return raw stdout. */
+export async function railwayExec(args: string[]): Promise<string> {
+  return runChecked(args);
+}
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function isUuid(value: string): boolean {
+  return UUID_RE.test(value);
+}
+
+/**
+ * `railway service list` accepts a project id only, while `deployment list`
+ * and `logs` accept a name or id. Resolve a name to its id via `railway list`
+ * so every railway-axi command accepts either form.
+ */
+export async function resolveProjectId(nameOrId: string): Promise<string> {
+  if (isUuid(nameOrId)) return nameOrId;
+  const projects = await railwayJson<{ id: string; name: string }[]>([
+    "list",
+    "--json",
+  ]);
+  return pickProjectId(nameOrId, projects);
+}
+
+export function pickProjectId(
+  name: string,
+  projects: { id: string; name: string }[],
+): string {
+  const exact = projects.find((p) => p.name === name);
+  if (exact) return exact.id;
+  const loose = projects.filter(
+    (p) => p.name.toLowerCase() === name.toLowerCase(),
+  );
+  if (loose.length === 1) return loose[0].id;
+  const names = projects.map((p) => p.name);
+  throw new AxiError(`Project "${name}" not found`, "NOT_FOUND", [
+    names.length > 0
+      ? `Available projects: ${names.join(", ")}`
+      : "No projects found in this account",
+    "Run `railway-axi list` for details",
+  ]);
 }

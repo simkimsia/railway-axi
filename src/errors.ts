@@ -47,18 +47,40 @@ const patterns: ErrorPattern[] = [
     suggestions: ["Run `railway login` in an interactive terminal, then retry"],
   },
   {
-    pattern: /no linked project|not linked|link a project|project not found/i,
+    pattern: /no service linked/i,
+    code: "NOT_LINKED",
+    message: "No service is linked to this directory",
+    suggestions: [
+      "Pass `--service <name>`; run `railway-axi services` to see names",
+    ],
+  },
+  {
+    // Unlinked directory: railway says exactly "Project not found. Run
+    // `railway link` ..." (no name quoted). An explicit bad id reads
+    // `Project "<id>" not found`, which must fall through to NOT_FOUND.
+    pattern:
+      /no linked project|not linked|link a project|^project not found\.|no service linked/i,
     code: "NOT_LINKED",
     message: "No Railway project is linked to this directory",
     suggestions: [
       "Run `railway-axi list` to see projects",
+      "Pass `--project <name> --environment <env>` to target one without linking",
       "Run `railway link -p <project>` to link one, then retry",
     ],
   },
   {
     pattern: /not found|does not exist/i,
     code: "NOT_FOUND",
-    suggestions: ["Run `railway-axi list` to see available projects"],
+    suggestions: [
+      "Run `railway-axi list` to see available projects",
+      "Run `railway-axi services` to see service names in the environment",
+    ],
+  },
+  {
+    pattern: /--environment is required/i,
+    code: "VALIDATION_ERROR",
+    message: "--environment is required when --project is given",
+    suggestions: ["Add `--environment <name>` (for example `production`)"],
   },
 ];
 

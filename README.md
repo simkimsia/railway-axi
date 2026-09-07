@@ -38,6 +38,9 @@ railway-axi            # dashboard: linked project, or recent projects
 railway-axi list       # all projects in your account
 railway-axi status     # project linked to the current directory
 railway-axi whoami     # logged-in Railway account
+railway-axi services     [--project <name> --environment <env>]   # services: status, age, source, URL
+railway-axi deployments  [--service <name>] [--limit 20]           # deploy history of one service
+railway-axi logs         [deployment-id] [--lines 100] [--build|--http] [--filter "@level:error"]
 railway-axi --help
 railway-axi --version  # fast path, never loads the command graph
 railway-axi update     # self-update (built into axi-sdk-js)
@@ -54,6 +57,13 @@ help[2]:
   Run `railway link -p <name>` in a project directory to link it
   Run `railway-axi status` to see the linked project
 ```
+
+`services`, `deployments` and `logs` default to the project linked to the
+current directory (or a parent). Pass `--project <name|id> --environment <env>`
+to read any project without linking. `logs` always fetches a bounded page and
+exits; it never streams, so an agent can never hang on it. When an environment
+has several services and none is linked, `deployments` and `logs` refuse and
+list the names instead of guessing.
 
 ## Agent skill
 

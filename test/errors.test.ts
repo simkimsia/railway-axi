@@ -32,3 +32,46 @@ describe("mapRailwayError", () => {
     expect(err.message).toBe("railway exited with code 3");
   });
 });
+
+describe("mapRailwayError project resolution", () => {
+  it("treats the unlinked 'Project not found.' as NOT_LINKED", () => {
+    const err = mapRailwayError(
+      "Project not found. Run `railway link` to connect to a project.",
+      1,
+    );
+    expect(err.code).toBe("NOT_LINKED");
+  });
+
+  it("treats an explicit bad project id as NOT_FOUND, not NOT_LINKED", () => {
+    const err = mapRailwayError(
+      'Project "00000000-0000-0000-0000-000000000000" not found',
+      1,
+    );
+    expect(err.code).toBe("NOT_FOUND");
+    expect(err.message).toContain("not found");
+  });
+
+  it("treats a bad service name as NOT_FOUND", () => {
+    expect(mapRailwayError("Service 'nope' not found", 1).code).toBe(
+      "NOT_FOUND",
+    );
+  });
+
+  it("maps a missing service link to NOT_LINKED with a --service hint", () => {
+    const err = mapRailwayError(
+      "No service linked. Use --service flag or --all to see all services",
+      1,
+    );
+    expect(err.code).toBe("NOT_LINKED");
+    expect(err.suggestions.join(" ")).toContain("--service");
+  });
+
+  it("maps the missing --environment complaint to VALIDATION_ERROR", () => {
+    const err = mapRailwayError(
+      "--environment is required when using --project",
+      1,
+    );
+    expect(err.code).toBe("VALIDATION_ERROR");
+    expect(exitCodeForError(err)).toBe(2);
+  });
+});

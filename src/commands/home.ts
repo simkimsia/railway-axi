@@ -28,7 +28,8 @@ export async function homeCommand(): Promise<string> {
         services: (linked.services?.edges ?? []).map((e) => e.node.name),
       }),
       renderHelp([
-        "Run `railway-axi status` for linked project details",
+        "Run `railway-axi services` for deploy status and URLs per service",
+        "Run `railway-axi deployments` or `railway-axi logs` to dig into one",
         "Run `railway-axi list` for all projects",
       ]),
     ]);
@@ -57,6 +58,9 @@ export async function homeCommand(): Promise<string> {
     }
   }
 
+  hints.push(
+    "Run `railway-axi services --project <name> --environment <env>` without linking",
+  );
   hints.push("Run `railway link -p <name>` to link a project here");
   blocks.push(renderHelp(hints));
   return renderOutput(blocks);

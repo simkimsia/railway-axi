@@ -1,6 +1,6 @@
 ---
 name: railway-axi
-description: "Operate Railway through the railway-axi CLI - projects, the project linked to the current directory, and account identity. Use whenever a task touches Railway. Prefer it over raw `railway`; when a command is not wrapped yet, fall back to `railway` and report the gap as a GitHub issue on simkimsia/railway-axi."
+description: "Operate Railway through the railway-axi CLI - projects, services, deployments, logs, the project linked to the current directory, and account identity. Use whenever a task touches Railway. Prefer it over raw `railway`; when a command is not wrapped yet, fall back to `railway` and report the gap as a GitHub issue on simkimsia/railway-axi."
 user-invocable: false
 author: KimSia Sim (simkimsia)
 metadata:
@@ -39,14 +39,14 @@ copies go stale. Get the current source of truth from the CLI:
 - `railway-axi --help` for global flags and the command index
 - `railway-axi <command> --help` for per-command usage
 
-Today's surface is read-only v0: `list` (all projects in the account), `status` (project linked to cwd), `whoami`.
+Today's surface is read-only: `list` (all projects in the account), `status` (project linked to cwd), `whoami`, `services` (per-service deploy status and URL), `deployments` (deploy history of one service), `logs` (a bounded page of deploy, build, or HTTP logs; never streams). The last three take `--project <name> --environment <env>` to read any project without linking.
 
 ## When railway-axi cannot do it
 
 1. Try `railway-axi <command>` first and read the structured error.
 2. If the error is `VALIDATION_ERROR` with `Unknown command`, or the command
    exists but lacks the flag you need, fall back to raw `railway` and finish
-   the user's task. Examples: `railway logs`, `railway deployment list`, `railway service`, `railway variables`.
+   the user's task. Examples: `railway variables` (values are deliberately not wrapped), `railway domain list`, `railway metrics`, `railway environment list`.
 3. Then report the gap so it gets wrapped. Search before filing:
 
    ```sh
