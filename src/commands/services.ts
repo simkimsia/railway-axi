@@ -1,4 +1,5 @@
 import { assertNoArgs } from "../args.js";
+import { AxiError } from "../errors.js";
 import {
   fetchServices,
   takeScope,
@@ -19,6 +20,15 @@ examples:
 
 export async function servicesCommand(args: string[]): Promise<string> {
   const scope = takeScope(args);
+  if (scope.service !== undefined) {
+    throw new AxiError(
+      "--service is not accepted by `services`: it lists every service in the environment",
+      "VALIDATION_ERROR",
+      [
+        "Run `railway-axi deployments --service <name>` or `railway-axi logs --service <name>` for one service",
+      ],
+    );
+  }
   assertNoArgs("services", args);
   const services = await fetchServices(scope);
   return renderServices(services, scope);

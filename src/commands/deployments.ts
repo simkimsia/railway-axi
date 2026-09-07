@@ -48,14 +48,19 @@ export async function deploymentsCommand(args: string[]): Promise<string> {
   );
   assertNoArgs("deployments", args);
 
-  // The raw CLI's output never names the service, so resolve it up front:
-  // this both refuses ambiguity and lets the header say which service it is.
-  const service = assertServiceUnambiguous(
-    scope,
-    await fetchServices(scope),
-    "deployments",
-  );
-  const resolved: Scope = { ...scope, service };
+  // The raw CLI's output never names the service, so when none was given
+  // resolve it up front: this both refuses ambiguity and lets the header say
+  // which service it is.
+  const resolved: Scope = scope.service
+    ? scope
+    : {
+        ...scope,
+        service: assertServiceUnambiguous(
+          scope,
+          await fetchServices(scope),
+          "deployments",
+        ),
+      };
   const deployments = await railwayJson<RailwayDeployment[]>([
     "deployment",
     "list",

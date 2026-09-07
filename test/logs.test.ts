@@ -106,6 +106,17 @@ describe("renderLogs", () => {
     expect(out).toContain("Drop `--build`/`--http`");
   });
 
+  it("reports skipped lines even when none parsed, instead of a clean empty", () => {
+    const out = renderLogs(parseNdjson("garbage\nmore garbage\n"), {
+      kind: "deploy",
+      lines: 100,
+      scope: { service: "web" },
+    });
+    expect(out).toContain(
+      "logs: 0 lines (kind: deploy, service: web), 2 unparseable skipped",
+    );
+  });
+
   it("uses a plain empty state for deploy logs", () => {
     const out = renderLogs(
       { rows: [], skipped: 0 },
@@ -129,8 +140,7 @@ describe("logsArgs", () => {
       "50",
       "--http",
       "--filter=-@method:OPTIONS",
-      "--service",
-      "web",
+      "--service=web",
     ]);
   });
 
@@ -148,10 +158,8 @@ describe("logsArgs", () => {
       "--lines",
       "100",
       "--build",
-      "--project",
-      "p",
-      "--environment",
-      "e",
+      "--project=p",
+      "--environment=e",
       "dep-1",
     ]);
   });

@@ -32,12 +32,16 @@ export function takeScope(args: string[]): Scope {
   return scope;
 }
 
-/** Translate a scope into the argv fragment the raw CLI expects. */
+/**
+ * Translate a scope into the argv fragment the raw CLI expects. Values go in
+ * `--flag=value` form because railway's clap parser rejects a dash-leading
+ * value in the space form, and that form is the escape hatch takeFlag offers.
+ */
 export function scopeArgs(scope: Scope): string[] {
   const out: string[] = [];
-  if (scope.project) out.push("--project", scope.project);
-  if (scope.environment) out.push("--environment", scope.environment);
-  if (scope.service) out.push("--service", scope.service);
+  if (scope.project) out.push(`--project=${scope.project}`);
+  if (scope.environment) out.push(`--environment=${scope.environment}`);
+  if (scope.service) out.push(`--service=${scope.service}`);
   return out;
 }
 
@@ -64,9 +68,9 @@ export interface RailwayService {
 export async function fetchServices(scope: Scope): Promise<RailwayService[]> {
   const args = ["service", "list", "--json"];
   if (scope.project) {
-    args.push("--project", await resolveProjectId(scope.project));
+    args.push(`--project=${await resolveProjectId(scope.project)}`);
   }
-  if (scope.environment) args.push("--environment", scope.environment);
+  if (scope.environment) args.push(`--environment=${scope.environment}`);
   try {
     return await railwayJson<RailwayService[]>(args);
   } catch (error) {

@@ -68,9 +68,10 @@ export async function logsCommand(args: string[]): Promise<string> {
   }
   const kind: LogKind = build ? "build" : http ? "http" : "deploy";
 
-  // A deployment id pins the service already; otherwise refuse ambiguity.
+  // A deployment id or an explicit --service pins the service already;
+  // otherwise look the services up and refuse ambiguity.
   let resolved: Scope = scope;
-  if (!deploymentId) {
+  if (!deploymentId && !scope.service) {
     const service = assertServiceUnambiguous(
       scope,
       await fetchServices(scope),
@@ -152,6 +153,7 @@ export function renderLogs(
   else if (ctx.scope.service) parts.push(`service: ${ctx.scope.service}`);
   if (ctx.scope.environment) parts.push(`env: ${ctx.scope.environment}`);
   const where = ` (${parts.join(", ")})`;
+  const skippedNote = skipped > 0 ? `, ${skipped} unparseable skipped` : "";
 
   if (rows.length === 0) {
     const why =
@@ -159,7 +161,7 @@ export function renderLogs(
         ? " (build logs are empty for image-based deploys)"
         : "";
     return renderOutput([
-      `logs: 0 lines${where}${why}`,
+      `logs: 0 lines${where}${why}${skippedNote}`,
       renderHelp([
         "Run `railway-axi deployments` to pick a deployment id",
         ctx.kind === "deploy"
@@ -181,7 +183,7 @@ export function renderLogs(
     hints.unshift(`Showing the newest ${rows.length} of possibly more lines`);
   }
   return renderOutput([
-    `count: ${rows.length} lines${where}${skipped > 0 ? `, ${skipped} unparseable skipped` : ""}`,
+    `count: ${rows.length} lines${where}${skippedNote}`,
     renderList("logs", table),
     renderHelp(hints),
   ]);

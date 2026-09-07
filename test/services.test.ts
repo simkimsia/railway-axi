@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { renderServices } from "../src/commands/services.js";
+import { renderServices, servicesCommand } from "../src/commands/services.js";
+import { AxiError } from "../src/errors.js";
 import type { RailwayService } from "../src/scope.js";
 
 // Shape captured from `railway service list --json` (railway 5.30.3), ids scrubbed.
@@ -51,5 +52,20 @@ describe("renderServices", () => {
     const out = renderServices([], { environment: "staging" });
     expect(out).toContain("services: 0 services in staging");
     expect(out).toContain("railway-axi status");
+  });
+});
+
+describe("servicesCommand", () => {
+  it("rejects --service by name before calling railway, pointing at deployments/logs", async () => {
+    for (const args of [["--service", "web"], ["--service=web"]]) {
+      const err = await servicesCommand(args).then(
+        () => undefined,
+        (e: unknown) => e as AxiError,
+      );
+      expect(err).toBeInstanceOf(AxiError);
+      expect(err?.code).toBe("VALIDATION_ERROR");
+      expect(err?.message).toContain("--service");
+      expect(err?.suggestions.join(" ")).toContain("deployments --service");
+    }
   });
 });

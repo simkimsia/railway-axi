@@ -53,14 +53,18 @@ describe("takeScope", () => {
 });
 
 describe("scopeArgs", () => {
-  it("emits only the flags that were set", () => {
+  it("emits only the flags that were set, in equals form", () => {
     expect(scopeArgs({ environment: "e", service: "s" })).toEqual([
-      "--environment",
-      "e",
-      "--service",
-      "s",
+      "--environment=e",
+      "--service=s",
     ]);
     expect(scopeArgs({})).toEqual([]);
+  });
+
+  it("keeps dash-leading values attached so clap cannot mistake them for flags", () => {
+    expect(
+      scopeArgs({ project: "-p", environment: "-e", service: "-s" }),
+    ).toEqual(["--project=-p", "--environment=-e", "--service=-s"]);
   });
 });
 
