@@ -28,7 +28,7 @@ pnpm --prefix railway-axi link --global   # puts `railway-axi` on PATH
 
 It wraps [`railway`](https://docs.railway.com/guides/cli), which must be installed and logged in
 (`railway login`). If a command fails with `RAILWAY_NOT_INSTALLED`, ask the user to
-install `railway`. `NOT_LINKED` means the current directory is not linked to a project; run `railway link` or use `list` which does not need a link.
+install `railway`. `NOT_LINKED` means the current directory is not linked to a project (or, for `deployments`/`logs`, to a service); pass the flags the error's `help:` suggests, run `railway link`, or use `list` which does not need a link.
 
 ## Current guidance lives in the CLI
 
