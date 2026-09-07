@@ -66,17 +66,35 @@ describe("logsCommand", () => {
     ]);
   });
 
-  it("skips the service lookup when a deployment id is given", async () => {
+  it("still resolves the service when a deployment id is given", async () => {
+    json.mockResolvedValueOnce([{ id: "s1", name: "api" }]);
     ndjson.mockResolvedValue({ rows: [], skipped: 0 });
     await logsCommand(["--build", "dep-1"]);
-    expect(json).not.toHaveBeenCalled();
+    expect(json).toHaveBeenCalledWith(["service", "list", "--json"]);
     expect(ndjson).toHaveBeenCalledWith([
       "logs",
       "--json",
       "--lines",
       "100",
       "--build",
+      "--service=api",
       "dep-1",
     ]);
+  });
+
+  it("refuses a deployment id with several services and no --service", async () => {
+    // A uuid skips the `railway list` name lookup, so service list is call one.
+    const project = "0a0a0a0a-0000-4000-8000-000000000000";
+    json.mockResolvedValueOnce([
+      { id: "s1", name: "caddy" },
+      { id: "s2", name: "emqx" },
+    ]);
+    await expect(
+      logsCommand(["dep-1", "--project", project, "--environment", "e"]),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      suggestions: expect.arrayContaining(["Services: caddy, emqx"]),
+    });
+    expect(ndjson).not.toHaveBeenCalled();
   });
 });

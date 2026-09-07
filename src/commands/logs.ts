@@ -27,7 +27,7 @@ flags[7]:
   --build               build logs instead of deploy logs
   --http                HTTP request logs instead of deploy logs
   --filter <expr>       railway log filter, e.g. "@level:error"
-  --service <name|id>   service to read; required when the environment has several and none is linked
+  --service <name|id>   service to read; required when the environment has several and none is linked (a deployment id does not pin it)
   --project <name|id>   project to read (requires --environment); default: linked project
   --environment <name>  environment to read; default: linked environment
 examples:
@@ -68,10 +68,11 @@ export async function logsCommand(args: string[]): Promise<string> {
   }
   const kind: LogKind = build ? "build" : http ? "http" : "deploy";
 
-  // A deployment id or an explicit --service pins the service already;
-  // otherwise look the services up and refuse ambiguity.
+  // Only an explicit --service skips the lookup. A deployment id does not
+  // pin the service for railway: with --project/--environment and no
+  // --service it refuses with "No service linked" even when the id is valid.
   let resolved: Scope = scope;
-  if (!deploymentId && !scope.service) {
+  if (!scope.service) {
     const service = assertServiceUnambiguous(
       scope,
       await fetchServices(scope),
