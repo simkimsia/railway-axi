@@ -23,6 +23,7 @@ describe("renderLogs", () => {
     expect(out).toContain("logs[2]{time,level,message}:");
     expect(out).toContain('"2026-09-07 01:09:11,490",warn,retrying');
     expect(out).not.toContain("Showing the newest");
+    expect(out).toContain('railway-axi logs --filter "@level:error"');
   });
 
   it("says when the page is full so the agent knows there may be more", () => {
@@ -62,6 +63,11 @@ describe("renderLogs", () => {
       '"2026-09-07T01:13:37.625544211Z",POST,/github/app/webhook,200,143',
     );
     expect(out).not.toContain("srcIp");
+    expect(out).toContain(
+      'railway-axi logs --http --filter "@httpStatus:>=400"',
+    );
+    expect(out).toContain("railway-axi logs --http --lines");
+    expect(out).not.toContain("@level:error");
   });
 
   it("reports skipped unparseable lines in the header", () => {

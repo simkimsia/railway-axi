@@ -105,6 +105,12 @@ export function isUuid(value: string): boolean {
   return UUID_RE.test(value);
 }
 
+export interface ProjectRef {
+  id: string;
+  name: string;
+  workspace?: { id: string; name: string };
+}
+
 /**
  * `railway service list` accepts a project id only, while `deployment list`
  * and `logs` accept a name or id. Resolve a name to its id via `railway list`
@@ -112,23 +118,35 @@ export function isUuid(value: string): boolean {
  */
 export async function resolveProjectId(nameOrId: string): Promise<string> {
   if (isUuid(nameOrId)) return nameOrId;
-  const projects = await railwayJson<{ id: string; name: string }[]>([
-    "list",
-    "--json",
-  ]);
+  const projects = await railwayJson<ProjectRef[]>(["list", "--json"]);
   return pickProjectId(nameOrId, projects);
 }
 
-export function pickProjectId(
-  name: string,
-  projects: { id: string; name: string }[],
-): string {
-  const exact = projects.find((p) => p.name === name);
-  if (exact) return exact.id;
-  const loose = projects.filter(
-    (p) => p.name.toLowerCase() === name.toLowerCase(),
-  );
-  if (loose.length === 1) return loose[0].id;
+/**
+ * Railway allows the same project name in different workspaces and `list` is
+ * account-wide, so a name can match more than one project. Refuse rather than
+ * guess (AXI §6); the candidates' ids let the agent retry unambiguously.
+ */
+export function pickProjectId(name: string, projects: ProjectRef[]): string {
+  const exact = projects.filter((p) => p.name === name);
+  const matches =
+    exact.length > 0
+      ? exact
+      : projects.filter((p) => p.name.toLowerCase() === name.toLowerCase());
+  if (matches.length === 1) return matches[0].id;
+  if (matches.length > 1) {
+    throw new AxiError(
+      `Project "${name}" is ambiguous: ${matches.length} projects share that name`,
+      "NOT_FOUND",
+      [
+        ...matches.map(
+          (p) =>
+            `${p.name} (${p.workspace?.name ?? "unknown workspace"}) ${p.id}`,
+        ),
+        "Retry with `--project <id>` to pick one",
+      ],
+    );
+  }
   const names = projects.map((p) => p.name);
   throw new AxiError(`Project "${name}" not found`, "NOT_FOUND", [
     names.length > 0

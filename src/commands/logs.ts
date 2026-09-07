@@ -160,9 +160,12 @@ export function renderLogs(
   }
 
   const table = ctx.kind === "http" ? rows.map(httpRow) : rows.map(messageRow);
+  const cmd = ctx.kind === "deploy" ? "logs" : `logs --${ctx.kind}`;
+  const errorFilter =
+    ctx.kind === "http" ? "@httpStatus:>=400" : "@level:error";
   const hints = [
-    `Run \`railway-axi logs --lines ${LOGS_LINES_MAX}\` for more history`,
-    'Run `railway-axi logs --filter "@level:error"` to narrow to errors',
+    `Run \`railway-axi ${cmd} --lines ${LOGS_LINES_MAX}\` for more history`,
+    `Run \`railway-axi ${cmd} --filter "${errorFilter}"\` to narrow to errors`,
   ];
   if (rows.length >= ctx.lines) {
     hints.unshift(`Showing the newest ${rows.length} of possibly more lines`);

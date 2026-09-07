@@ -32,7 +32,16 @@ export function takeFlag(args: string[], flag: string): string | undefined {
     const arg = args[i];
     if (arg === flag) {
       const value = args[i + 1];
-      if (value === undefined || isOptionToken(value) || value.trim() === "") {
+      if (isOptionToken(value)) {
+        throw new AxiError(
+          `${flag} requires a value, but ${value} looks like an option`,
+          "VALIDATION_ERROR",
+          [
+            `Use \`${flag}=${JSON.stringify(value)}\` for a value that starts with a dash`,
+          ],
+        );
+      }
+      if (value === undefined || value.trim() === "") {
         throw new AxiError(`${flag} requires a value`, "VALIDATION_ERROR", [
           `Use \`${flag} <value>\` or \`${flag}=<value>\``,
         ]);

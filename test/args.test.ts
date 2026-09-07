@@ -64,6 +64,22 @@ describe("takeFlag", () => {
     expect(args).toEqual(["--service", "--limit", "5"]);
   });
 
+  it("points a dash-leading value at the equals form and leaves args intact", () => {
+    const args = ["--filter", "-@method:OPTIONS"];
+    try {
+      takeFlag(args, "--filter");
+      expect.unreachable("should have thrown");
+    } catch (error) {
+      const err = error as AxiError;
+      expect(err.code).toBe("VALIDATION_ERROR");
+      expect(err.message).toContain("-@method:OPTIONS looks like an option");
+      expect(err.suggestions.join(" ")).toContain(
+        '--filter="-@method:OPTIONS"',
+      );
+    }
+    expect(args).toEqual(["--filter", "-@method:OPTIONS"]);
+  });
+
   it("refuses a trailing flag with no value", () => {
     expect(codeOf(() => takeFlag(["--service"], "--service"))).toBe(
       "VALIDATION_ERROR",

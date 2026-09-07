@@ -59,7 +59,7 @@ const patterns: ErrorPattern[] = [
     // `railway link` ..." (no name quoted). An explicit bad id reads
     // `Project "<id>" not found`, which must fall through to NOT_FOUND.
     pattern:
-      /no linked project|not linked|link a project|^project not found\.|no service linked/i,
+      /no linked project|not linked|link a project|^project not found\./i,
     code: "NOT_LINKED",
     message: "No Railway project is linked to this directory",
     suggestions: [

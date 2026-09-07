@@ -38,6 +38,40 @@ describe("pickProjectId", () => {
     expect(pickProjectId("other", projects)).toBe(projects[1].id);
   });
 
+  it("refuses a name shared by several projects and lists each candidate", () => {
+    const dupes = [
+      ...projects,
+      {
+        id: "33333333-3333-3333-3333-333333333333",
+        name: "my-app",
+        workspace: { id: "w1", name: "Team" },
+      },
+    ];
+    try {
+      pickProjectId("my-app", dupes);
+      expect.unreachable("should have thrown");
+    } catch (error) {
+      const err = error as AxiError;
+      expect(err.code).toBe("NOT_FOUND");
+      expect(err.message).toContain("ambiguous");
+      expect(err.suggestions).toContain(
+        "my-app (unknown workspace) 11111111-1111-1111-1111-111111111111",
+      );
+      expect(err.suggestions).toContain(
+        "my-app (Team) 33333333-3333-3333-3333-333333333333",
+      );
+      expect(err.suggestions.join(" ")).toContain("--project <id>");
+    }
+  });
+
+  it("prefers the exact-case match over a case-insensitive duplicate", () => {
+    const mixed = [
+      ...projects,
+      { id: "44444444-4444-4444-4444-444444444444", name: "My-App" },
+    ];
+    expect(pickProjectId("my-app", mixed)).toBe(projects[0].id);
+  });
+
   it("throws NOT_FOUND listing the available names", () => {
     try {
       pickProjectId("nope", projects);
