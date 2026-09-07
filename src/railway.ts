@@ -124,15 +124,14 @@ export async function resolveProjectId(nameOrId: string): Promise<string> {
 
 /**
  * Railway allows the same project name in different workspaces and `list` is
- * account-wide, so a name can match more than one project. Refuse rather than
- * guess (AXI §6); the candidates' ids let the agent retry unambiguously.
+ * account-wide, so a name can match more than one project. Names compare
+ * case-insensitively, exactly as railway's own resolver does, so a name that
+ * railway would call ambiguous is refused here too rather than guessed
+ * (AXI §6); the candidates' ids let the agent retry unambiguously.
  */
 export function pickProjectId(name: string, projects: ProjectRef[]): string {
-  const exact = projects.filter((p) => p.name === name);
-  const matches =
-    exact.length > 0
-      ? exact
-      : projects.filter((p) => p.name.toLowerCase() === name.toLowerCase());
+  const wanted = name.toLowerCase();
+  const matches = projects.filter((p) => p.name.toLowerCase() === wanted);
   if (matches.length === 1) return matches[0].id;
   if (matches.length > 1) {
     throw new AxiError(

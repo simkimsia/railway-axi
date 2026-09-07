@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { LOGS_MESSAGE_MAX, renderLogs } from "../src/commands/logs.js";
+import {
+  LOGS_MESSAGE_MAX,
+  logsArgs,
+  renderLogs,
+} from "../src/commands/logs.js";
 import { parseNdjson } from "../src/railway.js";
 
 // Captured from `railway logs --json --lines 3` (railway 5.30.3); key order
@@ -33,6 +37,18 @@ describe("renderLogs", () => {
       scope: {},
     });
     expect(out).toContain("Showing the newest 2 of possibly more lines");
+  });
+
+  it("counts skipped lines toward a full page", () => {
+    const out = renderLogs(parseNdjson('{"message":"ok"}\ngarbage'), {
+      kind: "deploy",
+      lines: 2,
+      scope: {},
+    });
+    expect(out).toContain(
+      "count: 1 lines (kind: deploy), 1 unparseable skipped",
+    );
+    expect(out).toContain("Showing the newest 1 of possibly more lines");
   });
 
   it("truncates long messages and flattens newlines", () => {
@@ -97,5 +113,46 @@ describe("renderLogs", () => {
     );
     expect(out).toContain("logs: 0 lines (kind: deploy)");
     expect(out).not.toContain("image-based");
+  });
+});
+
+describe("logsArgs", () => {
+  it("forwards --filter in equals form so dash-leading filters reach clap", () => {
+    const args = logsArgs(
+      { kind: "http", lines: 50, scope: { service: "web" } },
+      "-@method:OPTIONS",
+    );
+    expect(args).toEqual([
+      "logs",
+      "--json",
+      "--lines",
+      "50",
+      "--http",
+      "--filter=-@method:OPTIONS",
+      "--service",
+      "web",
+    ]);
+  });
+
+  it("omits --filter when none was given and appends the deployment id last", () => {
+    expect(
+      logsArgs({
+        kind: "build",
+        lines: 100,
+        scope: { project: "p", environment: "e" },
+        deploymentId: "dep-1",
+      }),
+    ).toEqual([
+      "logs",
+      "--json",
+      "--lines",
+      "100",
+      "--build",
+      "--project",
+      "p",
+      "--environment",
+      "e",
+      "dep-1",
+    ]);
   });
 });

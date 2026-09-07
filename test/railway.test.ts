@@ -64,12 +64,22 @@ describe("pickProjectId", () => {
     }
   });
 
-  it("prefers the exact-case match over a case-insensitive duplicate", () => {
+  it("refuses a name that only differs by case, as railway itself does", () => {
     const mixed = [
       ...projects,
       { id: "44444444-4444-4444-4444-444444444444", name: "My-App" },
     ];
-    expect(pickProjectId("my-app", mixed)).toBe(projects[0].id);
+    try {
+      pickProjectId("my-app", mixed);
+      expect.unreachable("should have thrown");
+    } catch (error) {
+      const err = error as AxiError;
+      expect(err.code).toBe("NOT_FOUND");
+      expect(err.message).toContain("ambiguous");
+      expect(err.suggestions).toContain(
+        "My-App (unknown workspace) 44444444-4444-4444-4444-444444444444",
+      );
+    }
   });
 
   it("throws NOT_FOUND listing the available names", () => {

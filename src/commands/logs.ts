@@ -79,15 +79,9 @@ export async function logsCommand(args: string[]): Promise<string> {
     resolved = { ...scope, service };
   }
 
-  const railwayArgs = ["logs", "--json", "--lines", String(lines)];
-  if (kind === "build") railwayArgs.push("--build");
-  if (kind === "http") railwayArgs.push("--http");
-  if (filter) railwayArgs.push("--filter", filter);
-  railwayArgs.push(...scopeArgs(resolved));
-  if (deploymentId) railwayArgs.push(deploymentId);
-
-  const result = await railwayNdjson<RailwayLogLine>(railwayArgs);
-  return renderLogs(result, { kind, lines, scope: resolved, deploymentId });
+  const ctx: LogsContext = { kind, lines, scope: resolved, deploymentId };
+  const result = await railwayNdjson<RailwayLogLine>(logsArgs(ctx, filter));
+  return renderLogs(result, ctx);
 }
 
 export interface LogsContext {
@@ -95,6 +89,22 @@ export interface LogsContext {
   lines: number;
   scope: Scope;
   deploymentId?: string;
+}
+
+/**
+ * Build the raw `railway logs` argv. `--filter` goes in equals form because
+ * railway's clap definition rejects a dash-leading value in the space form
+ * (`--filter -@method:OPTIONS` -> "unexpected argument '-@'"), and negation
+ * filters are documented to start with a dash.
+ */
+export function logsArgs(ctx: LogsContext, filter?: string): string[] {
+  const args = ["logs", "--json", "--lines", String(ctx.lines)];
+  if (ctx.kind === "build") args.push("--build");
+  if (ctx.kind === "http") args.push("--http");
+  if (filter) args.push(`--filter=${filter}`);
+  args.push(...scopeArgs(ctx.scope));
+  if (ctx.deploymentId) args.push(ctx.deploymentId);
+  return args;
 }
 
 function truncate(text: string, max: number): string {
@@ -167,7 +177,7 @@ export function renderLogs(
     `Run \`railway-axi ${cmd} --lines ${LOGS_LINES_MAX}\` for more history`,
     `Run \`railway-axi ${cmd} --filter "${errorFilter}"\` to narrow to errors`,
   ];
-  if (rows.length >= ctx.lines) {
+  if (rows.length + skipped >= ctx.lines) {
     hints.unshift(`Showing the newest ${rows.length} of possibly more lines`);
   }
   return renderOutput([

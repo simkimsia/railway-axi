@@ -66,6 +66,17 @@ describe("mapRailwayError project resolution", () => {
     expect(err.suggestions.join(" ")).toContain("--service");
   });
 
+  it("maps clap's unexpected-argument rejection to VALIDATION_ERROR", () => {
+    // Captured from railway 5.30.3: `railway logs --filter -@method:OPTIONS`.
+    const err = mapRailwayError(
+      "error: unexpected argument '-@' found\n\n  tip: to pass '-@' as a value, use '-- -@'\n\nUsage: railway logs [OPTIONS] [DEPLOYMENT_ID]",
+      2,
+    );
+    expect(err.code).toBe("VALIDATION_ERROR");
+    expect(err.message).toBe("error: unexpected argument '-@' found");
+    expect(exitCodeForError(err)).toBe(2);
+  });
+
   it("maps the missing --environment complaint to VALIDATION_ERROR", () => {
     const err = mapRailwayError(
       "--environment is required when using --project",

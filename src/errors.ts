@@ -77,6 +77,16 @@ const patterns: ErrorPattern[] = [
     ],
   },
   {
+    // clap rejecting argv we built, e.g. "error: unexpected argument '-@'
+    // found" when a value was forwarded in a form railway does not accept.
+    pattern: /unexpected argument/i,
+    code: "VALIDATION_ERROR",
+    suggestions: [
+      "The railway CLI rejected an argument railway-axi forwarded; check the flag values",
+      "Run `railway-axi <command> --help` for accepted flags",
+    ],
+  },
+  {
     pattern: /--environment is required/i,
     code: "VALIDATION_ERROR",
     message: "--environment is required when --project is given",
