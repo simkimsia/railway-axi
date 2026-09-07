@@ -1,5 +1,11 @@
 import { railwayJson } from "../railway.js";
-import { encode, relativeTime, renderHelp, renderList, renderOutput } from "../toon.js";
+import {
+  encode,
+  relativeTime,
+  renderHelp,
+  renderList,
+  renderOutput,
+} from "../toon.js";
 import type { RailwayProject } from "./list.js";
 import type { RailwayStatus } from "./status.js";
 
@@ -45,7 +51,9 @@ export async function homeCommand(): Promise<string> {
     }));
     blocks.push(renderList("projects", rows));
     if (projects.length > HOME_PROJECT_LIMIT) {
-      hints.push(`Run \`railway-axi list\` for all ${projects.length} projects`);
+      hints.push(
+        `Run \`railway-axi list\` for all ${projects.length} projects`,
+      );
     }
   }
 

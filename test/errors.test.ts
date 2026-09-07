@@ -3,14 +3,20 @@ import { exitCodeForError, mapRailwayError } from "../src/errors.js";
 
 describe("mapRailwayError", () => {
   it("maps auth failures to AUTH with a login suggestion", () => {
-    const err = mapRailwayError("Unauthorized. Please login with `railway login`", 1);
+    const err = mapRailwayError(
+      "Unauthorized. Please login with `railway login`",
+      1,
+    );
     expect(err.code).toBe("AUTH");
     expect(err.suggestions.join(" ")).toContain("railway login");
     expect(exitCodeForError(err)).toBe(1);
   });
 
   it("maps unlinked directories to NOT_LINKED with a link suggestion", () => {
-    const err = mapRailwayError("No linked project found. Run railway link to connect to a project", 1);
+    const err = mapRailwayError(
+      "No linked project found. Run railway link to connect to a project",
+      1,
+    );
     expect(err.code).toBe("NOT_LINKED");
     expect(err.suggestions.join(" ")).toContain("railway link");
   });
