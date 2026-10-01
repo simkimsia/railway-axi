@@ -23,7 +23,7 @@ railway-axi is not on npm yet. Run it from a clone:
 git clone https://github.com/simkimsia/railway-axi
 pnpm --prefix railway-axi install
 pnpm --prefix railway-axi run build
-pnpm --prefix railway-axi link --global   # puts `railway-axi` on PATH
+pnpm add -g link:$PWD/railway-axi   # puts `railway-axi` on PATH
 ```
 
 It wraps [`railway`](https://docs.railway.com/guides/cli), which must be installed and logged in
