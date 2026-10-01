@@ -163,6 +163,22 @@ function cell(value: unknown): unknown {
   return truncate(text, LOGS_MESSAGE_MAX);
 }
 
+/** Display names of each kind's base columns. */
+const BASE_COLUMNS: Record<LogKind, string[]> = {
+  deploy: ["time", "level", "message"],
+  build: ["time", "level", "message"],
+  http: ["time", "method", "path", "status", "ms"],
+};
+
+/**
+ * `--fields` names that become extra columns: a raw key a base column already
+ * shows ("httpStatus") or a base column's display name ("status") is skipped.
+ */
+function extraFields(ctx: LogsContext): string[] {
+  const taken = new Set([...SHOWN_KEYS[ctx.kind], ...BASE_COLUMNS[ctx.kind]]);
+  return (ctx.fields ?? []).filter((name) => !taken.has(name));
+}
+
 function withFields(
   base: Record<string, unknown>,
   r: RailwayLogLine,
@@ -170,15 +186,18 @@ function withFields(
 ): Record<string, unknown> {
   const row = { ...base };
   for (const name of fields) {
-    // A name that collides with a base column ("level") is already shown.
-    if (!(name in row)) row[name] = cell(r[name]);
+    row[name] = cell(Object.hasOwn(r, name) ? r[name] : undefined);
   }
   return row;
 }
 
 /** Attribute names present in the rows but not shown, for the --fields hint. */
 function hiddenKeys(rows: RailwayLogLine[], ctx: LogsContext): string[] {
-  const skip = new Set([...SHOWN_KEYS[ctx.kind], ...(ctx.fields ?? [])]);
+  const skip = new Set([
+    ...SHOWN_KEYS[ctx.kind],
+    ...BASE_COLUMNS[ctx.kind],
+    ...(ctx.fields ?? []),
+  ]);
   const keys = new Set<string>();
   for (const r of rows) {
     for (const key of Object.keys(r)) if (!skip.has(key)) keys.add(key);
@@ -241,7 +260,7 @@ export function renderLogs(
   }
 
   const baseRow = ctx.kind === "http" ? httpRow : messageRow;
-  const fields = ctx.fields ?? [];
+  const fields = extraFields(ctx);
   const table = rows.map((r) => withFields(baseRow(r), r, fields));
   const cmd = ctx.kind === "deploy" ? "logs" : `logs --${ctx.kind}`;
   const errorFilter =
@@ -258,7 +277,7 @@ export function renderLogs(
         ? `, +${hidden.length - shown.length} more`
         : "";
     hints.push(
-      `Attributes not shown: ${shown.join(", ")}${more}; add with \`--fields ${shown.slice(0, 3).join(",")}\``,
+      `Attributes not shown: ${shown.join(", ")}${more}; add with \`--fields ${[...(ctx.fields ?? []), ...shown.slice(0, 3)].join(",")}\``,
     );
   }
   if (rows.length + skipped >= ctx.lines) {
