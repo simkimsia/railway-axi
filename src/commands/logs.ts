@@ -277,7 +277,7 @@ export function renderLogs(
         ? `, +${hidden.length - shown.length} more`
         : "";
     hints.push(
-      `Attributes not shown: ${shown.join(", ")}${more}; add with \`--fields ${[...(ctx.fields ?? []), ...shown.slice(0, 3)].join(",")}\``,
+      `Attributes not shown: ${shown.join(", ")}${more}; add with \`--fields ${[...fields, ...shown.slice(0, 3)].join(",")}\``,
     );
   }
   if (rows.length + skipped >= ctx.lines) {
