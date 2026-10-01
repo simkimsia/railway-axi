@@ -139,7 +139,7 @@ describe("renderLogs", () => {
     );
     expect(out).toContain('cbm_home_cache_stored,"","","",');
     expect(out).toContain(
-      "Attributes not shown: bytes_gz; add with `--fields repo,duration_s,warm_cache,meta,level,bytes_gz`",
+      "Attributes not shown: bytes_gz; add with `--fields repo,duration_s,warm_cache,meta,bytes_gz`",
     );
   });
 
