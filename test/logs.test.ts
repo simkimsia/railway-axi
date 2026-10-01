@@ -139,8 +139,33 @@ describe("renderLogs", () => {
     );
     expect(out).toContain('cbm_home_cache_stored,"","","",');
     expect(out).toContain(
-      "Attributes not shown: bytes_gz; add with `--fields bytes_gz`",
+      "Attributes not shown: bytes_gz; add with `--fields repo,duration_s,warm_cache,meta,level,bytes_gz`",
     );
+  });
+
+  it("skips --fields names a base column already shows, by raw or display name", () => {
+    const http =
+      '{"timestamp":"2026-09-07T01:13:37Z","method":"GET","path":"/","httpStatus":200,"totalDuration":5,"status":"raw","srcIp":"10.0.0.1"}';
+    const out = renderLogs(parseNdjson(http), {
+      kind: "http",
+      lines: 100,
+      scope: {},
+      fields: ["httpStatus", "totalDuration", "timestamp", "status", "srcIp"],
+    });
+    expect(out).toContain("logs[1]{time,method,path,status,ms,srcIp}:");
+    expect(out).toContain('"2026-09-07T01:13:37Z",GET,/,200,5,10.0.0.1');
+    expect(out).not.toContain("Attributes not shown");
+  });
+
+  it("renders prototype-named --fields as empty, not as inherited values", () => {
+    const out = renderLogs(parseNdjson(raw), {
+      kind: "deploy",
+      lines: 100,
+      scope: {},
+      fields: ["constructor", "toString"],
+    });
+    expect(out).toContain("logs[2]{time,level,message,constructor,toString}:");
+    expect(out).toContain('"2026-09-07 01:09:11,490",warn,retrying,"",""');
   });
 
   it("hints at hidden attributes when no --fields was given", () => {
