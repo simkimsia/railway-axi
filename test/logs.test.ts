@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   LOGS_MESSAGE_MAX,
   logsArgs,
+  parseFields,
   renderLogs,
 } from "../src/commands/logs.js";
 import { parseNdjson } from "../src/railway.js";
@@ -78,7 +79,8 @@ describe("renderLogs", () => {
     expect(out).toContain(
       '"2026-09-07T01:13:37.625544211Z",POST,/github/app/webhook,200,143',
     );
-    expect(out).not.toContain("srcIp");
+    expect(out).not.toContain(",10.0.0.1");
+    expect(out).toContain("Attributes not shown: requestId, srcIp");
     expect(out).toContain(
       'railway-axi logs --http --filter "@httpStatus:>=400"',
     );
@@ -114,6 +116,41 @@ describe("renderLogs", () => {
     });
     expect(out).toContain(
       "logs: 0 lines (kind: deploy, service: web), 2 unparseable skipped",
+    );
+  });
+
+  it("adds --fields attributes as columns, leaving missing ones empty", () => {
+    // Shape from a structlog service: event name in message, attributes alongside.
+    const structured = [
+      '{"timestamp":"2026-10-01 05:13:10,028","level":"info","message":"cbm_home_cache_miss","repo":"o/r","duration_s":1.5,"warm_cache":false}',
+      '{"timestamp":"2026-10-01 05:13:21,437","level":"info","message":"cbm_home_cache_stored","bytes_gz":2048,"meta":{"a":1}}',
+    ].join("\n");
+    const out = renderLogs(parseNdjson(structured), {
+      kind: "deploy",
+      lines: 100,
+      scope: {},
+      fields: ["repo", "duration_s", "warm_cache", "meta", "level"],
+    });
+    expect(out).toContain(
+      "logs[2]{time,level,message,repo,duration_s,warm_cache,meta}:",
+    );
+    expect(out).toContain(
+      '"2026-10-01 05:13:10,028",info,cbm_home_cache_miss,o/r,1.5,false,""',
+    );
+    expect(out).toContain('cbm_home_cache_stored,"","","",');
+    expect(out).toContain(
+      "Attributes not shown: bytes_gz; add with `--fields bytes_gz`",
+    );
+  });
+
+  it("hints at hidden attributes when no --fields was given", () => {
+    const out = renderLogs(parseNdjson(raw), {
+      kind: "deploy",
+      lines: 100,
+      scope: {},
+    });
+    expect(out).toContain(
+      "Attributes not shown: name; add with `--fields name`",
     );
   });
 
@@ -162,5 +199,21 @@ describe("logsArgs", () => {
       "--environment=e",
       "dep-1",
     ]);
+  });
+});
+
+describe("parseFields", () => {
+  it("splits, trims and dedupes names", () => {
+    expect(parseFields(" repo,duration_s ,repo,")).toEqual([
+      "repo",
+      "duration_s",
+    ]);
+    expect(parseFields(undefined)).toEqual([]);
+  });
+
+  it("rejects a list with no names", () => {
+    expect(() => parseFields(" , ")).toThrow(
+      "--fields needs at least one name",
+    );
   });
 });

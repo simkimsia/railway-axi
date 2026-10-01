@@ -40,7 +40,7 @@ railway-axi status     # project linked to the current directory
 railway-axi whoami     # logged-in Railway account
 railway-axi services     [--project <name> --environment <env>]   # services: status, age, source, URL
 railway-axi deployments  [--service <name>] [--limit 20]           # deploy history of one service
-railway-axi logs         [deployment-id] [--lines 100] [--build|--http] [--filter "@level:error"]
+railway-axi logs         [deployment-id] [--lines 100] [--build|--http] [--filter "@level:error"] [--fields a,b]
 railway-axi --help
 railway-axi --version  # fast path, never loads the command graph
 railway-axi update     # self-update (built into axi-sdk-js)
