@@ -19,20 +19,23 @@ import { renderHelp, renderList, renderOutput } from "../toon.js";
 export const LOGS_LINES_DEFAULT = 100;
 export const LOGS_LINES_MAX = 500;
 export const LOGS_MESSAGE_MAX = 200;
+const HIDDEN_KEYS_MAX = 12;
 
 export const LOGS_HELP = `usage: railway-axi logs [deployment-id] [flags]
 Fetches recent log lines and exits. Never streams: --lines is always applied.
-flags[7]:
+flags[8]:
   --lines <n>           lines to fetch (default ${LOGS_LINES_DEFAULT}, max ${LOGS_LINES_MAX})
   --build               build logs instead of deploy logs
   --http                HTTP request logs instead of deploy logs
   --filter <expr>       railway log filter, e.g. "@level:error"
+  --fields <a,b,c>      add structured log attributes as extra columns (missing ones stay empty)
   --service <name|id>   service to read; required when the environment has several and none is linked (a deployment id does not pin it)
   --project <name|id>   project to read (requires --environment); default: linked project
   --environment <name>  environment to read; default: linked environment
 examples:
   railway-axi logs
   railway-axi logs --lines 500 --filter "@level:error"
+  railway-axi logs --filter "cache" --fields repo,duration_s
   railway-axi logs --build <deployment-id>
   railway-axi logs --project my-app --environment production --service web --http --lines 50
 `;
@@ -57,6 +60,7 @@ export async function logsCommand(args: string[]): Promise<string> {
   const build = takeBoolFlag(args, "--build");
   const http = takeBoolFlag(args, "--http");
   const filter = takeFlag(args, "--filter");
+  const fields = parseFields(takeFlag(args, "--fields"));
   const deploymentId = takePositional(args);
   assertNoArgs("logs", args);
 
@@ -81,7 +85,13 @@ export async function logsCommand(args: string[]): Promise<string> {
     resolved = { ...scope, service };
   }
 
-  const ctx: LogsContext = { kind, lines, scope: resolved, deploymentId };
+  const ctx: LogsContext = {
+    kind,
+    lines,
+    scope: resolved,
+    deploymentId,
+    fields,
+  };
   const result = await railwayNdjson<RailwayLogLine>(logsArgs(ctx, filter));
   return renderLogs(result, ctx);
 }
@@ -91,6 +101,27 @@ export interface LogsContext {
   lines: number;
   scope: Scope;
   deploymentId?: string;
+  /** Raw attribute names to append as extra columns (`--fields`). */
+  fields?: string[];
+}
+
+/** Split `--fields a, b,a` into unique, non-empty names. */
+export function parseFields(value: string | undefined): string[] {
+  if (value === undefined) return [];
+  const names = [
+    ...new Set(
+      value
+        .split(",")
+        .map((name) => name.trim())
+        .filter(Boolean),
+    ),
+  ];
+  if (names.length === 0) {
+    throw new AxiError("--fields needs at least one name", "VALIDATION_ERROR", [
+      "Use `--fields repo,duration_s`",
+    ]);
+  }
+  return names;
 }
 
 /**
@@ -116,6 +147,43 @@ function truncate(text: string, max: number): string {
 
 function str(value: unknown): string {
   return typeof value === "string" ? value : "";
+}
+
+/** Raw keys each kind already shows as a base column. */
+const SHOWN_KEYS: Record<LogKind, string[]> = {
+  deploy: ["timestamp", "level", "message"],
+  build: ["timestamp", "level", "message"],
+  http: ["timestamp", "method", "path", "httpStatus", "totalDuration"],
+};
+
+function cell(value: unknown): unknown {
+  if (value === undefined || value === null) return "";
+  if (typeof value === "number" || typeof value === "boolean") return value;
+  const text = typeof value === "string" ? value : JSON.stringify(value);
+  return truncate(text, LOGS_MESSAGE_MAX);
+}
+
+function withFields(
+  base: Record<string, unknown>,
+  r: RailwayLogLine,
+  fields: string[],
+): Record<string, unknown> {
+  const row = { ...base };
+  for (const name of fields) {
+    // A name that collides with a base column ("level") is already shown.
+    if (!(name in row)) row[name] = cell(r[name]);
+  }
+  return row;
+}
+
+/** Attribute names present in the rows but not shown, for the --fields hint. */
+function hiddenKeys(rows: RailwayLogLine[], ctx: LogsContext): string[] {
+  const skip = new Set([...SHOWN_KEYS[ctx.kind], ...(ctx.fields ?? [])]);
+  const keys = new Set<string>();
+  for (const r of rows) {
+    for (const key of Object.keys(r)) if (!skip.has(key)) keys.add(key);
+  }
+  return [...keys].sort();
 }
 
 function messageRow(r: RailwayLogLine): Record<string, unknown> {
@@ -172,7 +240,9 @@ export function renderLogs(
     ]);
   }
 
-  const table = ctx.kind === "http" ? rows.map(httpRow) : rows.map(messageRow);
+  const baseRow = ctx.kind === "http" ? httpRow : messageRow;
+  const fields = ctx.fields ?? [];
+  const table = rows.map((r) => withFields(baseRow(r), r, fields));
   const cmd = ctx.kind === "deploy" ? "logs" : `logs --${ctx.kind}`;
   const errorFilter =
     ctx.kind === "http" ? "@httpStatus:>=400" : "@level:error";
@@ -180,6 +250,17 @@ export function renderLogs(
     `Run \`railway-axi ${cmd} --lines ${LOGS_LINES_MAX}\` for more history`,
     `Run \`railway-axi ${cmd} --filter "${errorFilter}"\` to narrow to errors`,
   ];
+  const hidden = hiddenKeys(rows, ctx);
+  if (hidden.length > 0) {
+    const shown = hidden.slice(0, HIDDEN_KEYS_MAX);
+    const more =
+      hidden.length > shown.length
+        ? `, +${hidden.length - shown.length} more`
+        : "";
+    hints.push(
+      `Attributes not shown: ${shown.join(", ")}${more}; add with \`--fields ${shown.slice(0, 3).join(",")}\``,
+    );
+  }
   if (rows.length + skipped >= ctx.lines) {
     hints.unshift(`Showing the newest ${rows.length} of possibly more lines`);
   }
