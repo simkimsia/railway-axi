@@ -25,7 +25,7 @@ Not on npm yet, so `npx -y railway-axi` does not work. Install from a clone:
 git clone https://github.com/simkimsia/railway-axi
 pnpm --prefix railway-axi install
 pnpm --prefix railway-axi run build
-pnpm --prefix railway-axi link --global   # puts `railway-axi` on PATH
+pnpm add -g link:$PWD/railway-axi   # puts `railway-axi` on PATH
 ```
 
 Check it: `railway-axi --version`. To update later, `git pull` in the clone
