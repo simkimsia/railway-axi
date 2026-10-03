@@ -74,6 +74,25 @@ async function resolveScope(scope: Scope, command: string): Promise<Scope> {
   };
 }
 
+function takeVariablesScope(args: string[]): Scope {
+  try {
+    return takeScope(args);
+  } catch (error) {
+    if (
+      error instanceof AxiError &&
+      error.message.includes("looks like an option")
+    ) {
+      const flag = error.message.split(" ")[0];
+      throw new AxiError(
+        `${flag} requires a value, but the next argument looks like an option (not shown: it may be a value)`,
+        "VALIDATION_ERROR",
+        [`Use \`${flag}=<value>\` for a value that starts with a dash`],
+      );
+    }
+    throw error;
+  }
+}
+
 function fetchVariables(scope: Scope): Promise<Record<string, string>> {
   return railwayJson<Record<string, string>>(
     ["variable", "list", "--json", ...scopeArgs(scope)],
@@ -89,7 +108,7 @@ function where(scope: Scope): string {
 }
 
 async function listVariables(args: string[]): Promise<string> {
-  const scope = takeScope(args);
+  const scope = takeVariablesScope(args);
   assertNoArgs("variables list", args);
   const resolved = await resolveScope(scope, "variables list");
   return renderVariableNames(await fetchVariables(resolved), resolved);
@@ -116,7 +135,7 @@ export function renderVariableNames(
 }
 
 async function getVariable(args: string[]): Promise<string> {
-  const scope = takeScope(args);
+  const scope = takeVariablesScope(args);
   const name = takePositional(args);
   if (name === undefined) {
     throw new AxiError(
@@ -152,12 +171,30 @@ export function renderVariable(
   });
 }
 
+const SCOPE_FLAGS = ["--project", "--environment", "--service"];
+
+/** Indexes into `original` of the tokens takeScope and --skip-deploys left. */
+function pairSlots(original: string[]): number[] {
+  const taken = new Set<number>();
+  const take = (match: (a: string) => boolean): number => {
+    const i = original.findIndex((a, j) => !taken.has(j) && match(a));
+    if (i !== -1) taken.add(i);
+    return i;
+  };
+  for (const flag of SCOPE_FLAGS) {
+    const i = take((a) => a === flag || a.startsWith(`${flag}=`));
+    if (i !== -1 && original[i] === flag) taken.add(i + 1);
+  }
+  take((a) => a === "--skip-deploys");
+  return original.map((_, i) => i).filter((i) => !taken.has(i));
+}
+
 // Railway splits each pair on the first `=`, so only the name is constrained.
 const PAIR_RE = /^[^\s=]+=/;
 
 async function setVariables(args: string[]): Promise<string> {
   const original = [...args];
-  const scope = takeScope(args);
+  const scope = takeVariablesScope(args);
   const skipDeploys = takeBoolFlag(args, "--skip-deploys");
   const pairs = args;
   if (pairs.length === 0) {
@@ -168,10 +205,10 @@ async function setVariables(args: string[]): Promise<string> {
     );
   }
   // Report only the position: a stray token may be carrying a secret.
-  const bad = pairs.find((p) => p.startsWith("-") || !PAIR_RE.test(p));
-  if (bad !== undefined) {
+  const bad = pairs.findIndex((p) => p.startsWith("-") || !PAIR_RE.test(p));
+  if (bad !== -1) {
     throw new AxiError(
-      `argument ${original.indexOf(bad) + 1} of \`variables set\` is not NAME=value or a known flag (not shown: it may be a value)`,
+      `argument ${pairSlots(original)[bad] + 1} of \`variables set\` is not NAME=value or a known flag (not shown: it may be a value)`,
       "VALIDATION_ERROR",
       [
         'Quote the pair if the value has spaces: `"NAME=some value"`',

@@ -174,6 +174,16 @@ describe("variables set", () => {
       message: expect.stringMatching(/^argument 1 of `variables set` is not/),
     });
     await expect(
+      variablesCommand(["set", "--service", "web", "web"]),
+    ).rejects.toMatchObject({
+      message: expect.stringMatching(/^argument 3 of `variables set` is not/),
+    });
+    await expect(
+      variablesCommand(["set", "--skip-deploys", "A=1", "--skip-deploys"]),
+    ).rejects.toMatchObject({
+      message: expect.stringMatching(/^argument 3 of `variables set` is not/),
+    });
+    await expect(
       variablesCommand(["set", "--servce", "web", "--service", "web"]),
     ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
     await expect(
