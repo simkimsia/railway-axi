@@ -37,23 +37,50 @@ function run(args: string[]): Promise<ExecResult> {
   });
 }
 
-async function runChecked(args: string[]): Promise<string> {
+/**
+ * For calls whose stdout carries secrets (`variable list --json`, or `variable
+ * set`, which may echo pairs): stdout never reaches an error message, and each
+ * `redact` value is masked out of stderr before it is mapped.
+ */
+export interface SecretOptions {
+  secret?: boolean;
+  redact?: string[];
+}
+
+function redactText(text: string, values: string[]): string {
+  let out = text;
+  for (const value of values) {
+    if (value !== "") out = out.split(value).join("<redacted>");
+  }
+  return out;
+}
+
+async function runChecked(
+  args: string[],
+  opts: SecretOptions = {},
+): Promise<string> {
   const result = await run(args);
   if (result.stderr === "ENOENT") throw railwayNotInstalledError();
   if (result.exitCode !== 0) {
-    throw mapRailwayError(result.stderr || result.stdout, result.exitCode);
+    const text = opts.secret ? result.stderr : result.stderr || result.stdout;
+    throw mapRailwayError(redactText(text, opts.redact ?? []), result.exitCode);
   }
   return result.stdout;
 }
 
 /** Execute railway and return parsed JSON. */
-export async function railwayJson<T = unknown>(args: string[]): Promise<T> {
-  const stdout = await runChecked(args);
+export async function railwayJson<T = unknown>(
+  args: string[],
+  opts: SecretOptions = {},
+): Promise<T> {
+  const stdout = await runChecked(args, opts);
   try {
     return JSON.parse(stdout) as T;
   } catch {
     throw new AxiError(
-      `Unexpected railway output: ${stdout.slice(0, 200)}`,
+      opts.secret
+        ? "Unexpected railway output (not shown: it may contain secret values)"
+        : `Unexpected railway output: ${stdout.slice(0, 200)}`,
       "UNKNOWN",
     );
   }
@@ -94,8 +121,11 @@ export async function railwayNdjson<T = unknown>(
 }
 
 /** Execute railway and return raw stdout. */
-export async function railwayExec(args: string[]): Promise<string> {
-  return runChecked(args);
+export async function railwayExec(
+  args: string[],
+  opts: SecretOptions = {},
+): Promise<string> {
+  return runChecked(args, opts);
 }
 
 const UUID_RE =
