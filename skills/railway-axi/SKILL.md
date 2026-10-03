@@ -1,6 +1,6 @@
 ---
 name: railway-axi
-description: "Operate Railway through the railway-axi CLI - projects, services, deployments, logs, the project linked to the current directory, and account identity. Use whenever a task touches Railway. Prefer it over raw `railway`; when a command is not wrapped yet, fall back to `railway` and report the gap as a GitHub issue on simkimsia/railway-axi."
+description: "Operate Railway through the railway-axi CLI - projects, services, deployments, logs, variables, the project linked to the current directory, and account identity. Use whenever a task touches Railway. Prefer it over raw `railway`; when a command is not wrapped yet, fall back to `railway` and report the gap as a GitHub issue on simkimsia/railway-axi."
 user-invocable: false
 author: KimSia Sim (simkimsia)
 metadata:
@@ -39,14 +39,14 @@ copies go stale. Get the current source of truth from the CLI:
 - `railway-axi --help` for global flags and the command index
 - `railway-axi <command> --help` for per-command usage
 
-Today's surface is read-only: `list` (all projects in the account), `status` (project linked to cwd), `whoami`, `services` (per-service deploy status and URL), `deployments` (deploy history of one service), `logs` (a bounded page of deploy, build, or HTTP logs; never streams). The last three take `--project <name> --environment <env>` to read any project without linking.
+Today's surface is mostly read-only: `list` (all projects in the account), `status` (project linked to cwd), `whoami`, `services` (per-service deploy status and URL), `deployments` (deploy history of one service), `logs` (a bounded page of deploy, build, or HTTP logs; never streams), `variables` (`list` names only, `get` one value, `set` which mutates and redeploys). The last four take `--project <name> --environment <env>` to target any project without linking.
 
 ## When railway-axi cannot do it
 
 1. Try `railway-axi <command>` first and read the structured error.
 2. If the error is `VALIDATION_ERROR` with `Unknown command`, or the command
    exists but lacks the flag you need, fall back to raw `railway` and finish
-   the user's task. Examples: `railway variables` (values are deliberately not wrapped), `railway domain list`, `railway metrics`, `railway environment list`.
+   the user's task. Examples: `railway domain list`, `railway metrics`, `railway environment list`.
 3. Then report the gap so it gets wrapped. Search before filing:
 
    ```sh
@@ -82,6 +82,6 @@ Today's surface is read-only: `list` (all projects in the account), `status` (pr
 
 ## Deliberately not wrapped (do not file)
 
-Mutating commands: `railway up`, `railway redeploy`, `railway down`, `railway variables --set`, `railway add`, `railway link/unlink`, `railway delete`.
+Mutating commands: `railway up`, `railway redeploy`, `railway down`, `railway variable delete`, `railway add`, `railway link/unlink`, `railway delete`.
 These are excluded by design in v0. Use `railway` directly, tell the user
 you did so, and do not open an issue for them.

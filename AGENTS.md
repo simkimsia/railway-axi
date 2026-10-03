@@ -46,6 +46,13 @@ AXI principles (the `axi` skill in the upstream `kunchenguid/axi` repo).
   `src/railway.ts`). `railway service list` accepts a project id only, while
   `deployment list` and `logs` accept a name; `--project` always needs
   `--environment`. See the comments in `src/scope.ts`.
+- `railway variable list --json` is a flat `{NAME: value}` object of raw
+  secrets, and `variable` takes a project id only. `src/commands/variables.ts`
+  is the one mutating command; no code path there may print a value other
+  than the single one `get` was asked for (errors included). Its railway calls
+  pass `secret`/`redact` (`SecretOptions` in `src/railway.ts`), and
+  `test/variables-leak.test.ts` fakes the binary to prove it; add a case
+  there for any new failure mode or subcommand.
 - The SDK ships `update` as a reserved built-in, so `railway-axi update` works
   with no code here; the npm package name resolves from `package.json`.
 
