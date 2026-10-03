@@ -156,12 +156,10 @@ export function renderVariable(
 const PAIR_RE = /^[^\s=]+=/;
 
 async function setVariables(args: string[]): Promise<string> {
+  const original = [...args];
   const scope = takeScope(args);
   const skipDeploys = takeBoolFlag(args, "--skip-deploys");
-  const pairs: string[] = [];
-  for (let p = takePositional(args); p !== undefined; p = takePositional(args))
-    pairs.push(p);
-  assertNoArgs("variables set", args);
+  const pairs = args;
   if (pairs.length === 0) {
     throw new AxiError(
       "`variables set` requires at least one NAME=value pair",
@@ -169,14 +167,16 @@ async function setVariables(args: string[]): Promise<string> {
       ["Run `railway-axi variables set <NAME=value> [--service <name>]`"],
     );
   }
-  // Report only the name: a malformed pair may still be carrying a secret.
-  const bad = pairs.find((p) => !PAIR_RE.test(p));
+  // Report only the position: a stray token may be carrying a secret.
+  const bad = pairs.find((p) => p.startsWith("-") || !PAIR_RE.test(p));
   if (bad !== undefined) {
-    const shown = bad.includes("=") ? bad.slice(0, bad.indexOf("=")) : bad;
     throw new AxiError(
-      `expected NAME=value, got "${shown}"`,
+      `argument ${original.indexOf(bad) + 1} of \`variables set\` is not NAME=value or a known flag (not shown: it may be a value)`,
       "VALIDATION_ERROR",
-      ['Quote the pair if the value has spaces: `"NAME=some value"`'],
+      [
+        'Quote the pair if the value has spaces: `"NAME=some value"`',
+        "Flags: --service, --project, --environment, --skip-deploys",
+      ],
     );
   }
   const resolved = await resolveScope(scope, "variables set");

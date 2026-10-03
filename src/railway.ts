@@ -49,8 +49,11 @@ export interface SecretOptions {
 
 function redactText(text: string, values: string[]): string {
   let out = text;
-  for (const value of values) {
-    if (value !== "") out = out.split(value).join("<redacted>");
+  const longestFirst = values
+    .filter((v) => v !== "")
+    .sort((a, b) => b.length - a.length);
+  for (const value of longestFirst) {
+    out = out.split(value).join("<redacted>");
   }
   return out;
 }
