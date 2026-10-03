@@ -1,4 +1,9 @@
-import { assertNoArgs, takeBoolFlag, takePositional } from "../args.js";
+import {
+  assertNoArgs,
+  isOptionToken,
+  takeBoolFlag,
+  takePositional,
+} from "../args.js";
 import { AxiError } from "../errors.js";
 import {
   railwayExec,
@@ -36,43 +41,51 @@ examples:
 const SUBCOMMANDS = ["list", "get", "set"];
 const SCOPE_FLAGS = ["--project", "--environment", "--service"];
 
+const KNOWN_FLAGS = [...SCOPE_FLAGS, "--skip-deploys"];
+
 /**
- * Every argv text that may be a secret value: what follows the first `=` of
- * any token other than a scope flag's own `--flag=value`, a swallowed pair in
- * a scope value, and each bare token that is not the subcommand, a scope
- * flag's value, or the one NAME given to `get`.
+ * Every argv text that may be a secret value. This is an allowlist: a token is
+ * safe only when it is the subcommand, a known flag, a scope flag's value
+ * with no `=`, or the one NAME `get` reads (picked by takePositional's own
+ * rule). Everything else is masked, so an odd token cannot slip through a
+ * case nobody thought of. A token with `=` also contributes its value alone,
+ * because railway may echo just the value.
  */
 function secretCandidates(argv: string[]): string[] {
   const out: string[] = [];
-  const afterEquals = (t: string) => t.slice(t.indexOf("=") + 1);
+  const mask = (t: string) => {
+    out.push(t);
+    if (t.includes("=")) out.push(t.slice(t.indexOf("=") + 1));
+  };
   let sub = "list";
   let i = 0;
   if (argv[0] !== undefined && !argv[0].startsWith("-")) {
     sub = argv[0];
-    if (!SUBCOMMANDS.includes(sub)) out.push(sub);
+    if (!SUBCOMMANDS.includes(sub)) mask(sub);
     i = 1;
   }
   let nameSeen = false;
   for (; i < argv.length; i++) {
     const token = argv[i];
-    const next = argv[i + 1];
     const scopeEq = SCOPE_FLAGS.find((f) => token.startsWith(`${f}=`));
     if (scopeEq !== undefined) {
       const value = token.slice(scopeEq.length + 1);
-      if (value.includes("=")) out.push(afterEquals(value));
+      if (value.includes("=")) mask(value);
       continue;
     }
     if (SCOPE_FLAGS.includes(token)) {
-      if (next !== undefined && !next.startsWith("-") && !next.includes("=")) {
+      const next = argv[i + 1];
+      if (next !== undefined && !isOptionToken(next) && !next.includes("=")) {
         i++;
       }
       continue;
     }
-    if (token.includes("=")) out.push(afterEquals(token));
-    else if (!token.startsWith("-")) {
-      if (sub === "get" && !nameSeen) nameSeen = true;
-      else out.push(token);
+    if (KNOWN_FLAGS.includes(token)) continue;
+    if (sub === "get" && !nameSeen && !isOptionToken(token)) {
+      nameSeen = true;
+      if (!token.includes("=")) continue;
     }
+    mask(token);
   }
   return out.filter((v) => v !== "");
 }

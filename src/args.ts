@@ -15,7 +15,7 @@ export function assertNoArgs(command: string, args: string[]): void {
   );
 }
 
-function isOptionToken(token: string | undefined): boolean {
+export function isOptionToken(token: string | undefined): boolean {
   return token !== undefined && token.startsWith("-") && token !== "-";
 }
 

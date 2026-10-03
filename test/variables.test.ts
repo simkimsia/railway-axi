@@ -128,7 +128,15 @@ describe("variables set", () => {
         "FLAG=true",
         "URL=https://x.test/?a=b",
       ],
-      { secret: true, redact: ["true", "https://x.test/?a=b"] },
+      {
+        secret: true,
+        redact: [
+          "FLAG=true",
+          "true",
+          "URL=https://x.test/?a=b",
+          "https://x.test/?a=b",
+        ],
+      },
     );
     expect(out).toContain("set[2]: FLAG,URL");
     expect(out).toContain("service: web");
@@ -147,7 +155,7 @@ describe("variables set", () => {
     ]);
     expect(exec).toHaveBeenCalledWith(
       ["variable", "set", "--skip-deploys", "--service=web", "--", "A=1"],
-      { secret: true, redact: ["1"] },
+      { secret: true, redact: ["A=1", "1"] },
     );
     expect(out).toContain("redeploy: skipped");
   });

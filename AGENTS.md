@@ -51,8 +51,10 @@ AXI principles (the `axi` skill in the upstream `kunchenguid/axi` repo).
   is the one mutating command; no code path there may print a value other
   than the single one `get` was asked for (errors included). Its railway calls
   pass `secret`/`redact` (`SecretOptions` in `src/railway.ts`), and
-  `test/variables-leak.test.ts` fakes the binary to prove it; add a case
-  there for any new failure mode or subcommand.
+  `test/variables-leak.test.ts` fakes the binary to prove it. Errors are
+  masked through `secretCandidates`, an allowlist: a new flag or subcommand
+  must be added to it (`KNOWN_FLAGS`/`SUBCOMMANDS`) and to the sweep's
+  `BASES`, and a new railway failure mode gets a row in the cases table.
 - The SDK ships `update` as a reserved built-in, so `railway-axi update` works
   with no code here; the npm package name resolves from `package.json`.
 
