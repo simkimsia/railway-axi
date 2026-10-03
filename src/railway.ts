@@ -47,7 +47,8 @@ export interface SecretOptions {
   redact?: string[];
 }
 
-function redactText(text: string, values: string[]): string {
+/** Mask each value out of text, longest first so overlapping values stay hidden. */
+export function redactText(text: string, values: string[]): string {
   let out = text;
   const longestFirst = values
     .filter((v) => v !== "")
