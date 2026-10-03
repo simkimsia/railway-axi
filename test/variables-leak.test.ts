@@ -117,6 +117,34 @@ const cases: Array<{ name: string; args: string[]; run: FakeRun }> = [
     run: {},
   },
   {
+    name: "get: a NAME=value pair instead of a NAME",
+    args: ["get", `API_KEY=${CANARY}`, "--service", "web"],
+    run: { stdout: JSON.stringify({ PORT: "8080" }) },
+  },
+  {
+    name: "get: a stray value after the NAME",
+    args: ["get", "API_KEY", CANARY, "--service", "web"],
+    run: {},
+  },
+  {
+    name: "list: a dash-leading NAME=value token",
+    args: ["list", `-K=${CANARY}`, "--service", "web"],
+    run: {},
+  },
+  {
+    name: "set: a scope flag that swallowed a pair, railway echoing it",
+    args: ["set", "--service", `API_KEY=${CANARY}`, "OTHER=1"],
+    run: {
+      stderr: `error: Service 'API_KEY=${CANARY}' not found`,
+      exitCode: 1,
+    },
+  },
+  {
+    name: "unknown subcommand that is really a value",
+    args: [CANARY, "--service", "web"],
+    run: {},
+  },
+  {
     name: "set: success that echoes values",
     args: ["set", `API_KEY=${CANARY}`, "--service", "web"],
     run: { stdout: `Set API_KEY=${CANARY}` },

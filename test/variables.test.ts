@@ -25,7 +25,7 @@ describe("variables list", () => {
     const out = await variablesCommand(["list", "--service", "web"]);
     expect(json).toHaveBeenCalledWith(
       ["variable", "list", "--json", "--service=web"],
-      { secret: true },
+      { secret: true, redact: [] },
     );
     expect(out).toContain("count: 3 variables (service: web), values hidden");
     expect(out).toContain("variables[3]: API_KEY,PORT,ZED");
@@ -47,7 +47,7 @@ describe("variables list", () => {
     expect(json).toHaveBeenNthCalledWith(
       2,
       ["variable", "list", "--json", "--service=api"],
-      { secret: true },
+      { secret: true, redact: [] },
     );
     expect(out).toContain("(service: api)");
   });
@@ -74,7 +74,7 @@ describe("variables list", () => {
         "--environment=production",
         "--service=web",
       ],
-      { secret: true },
+      { secret: true, redact: [] },
     );
   });
 });

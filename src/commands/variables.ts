@@ -1,6 +1,11 @@
 import { assertNoArgs, takeBoolFlag, takePositional } from "../args.js";
 import { AxiError } from "../errors.js";
-import { railwayExec, railwayJson, resolveProjectId } from "../railway.js";
+import {
+  railwayExec,
+  railwayJson,
+  redactText,
+  resolveProjectId,
+} from "../railway.js";
 import {
   assertServiceUnambiguous,
   fetchServices,
@@ -29,18 +34,83 @@ examples:
 `;
 
 const SUBCOMMANDS = ["list", "get", "set"];
+const SCOPE_FLAGS = ["--project", "--environment", "--service"];
+
+/**
+ * Every argv text that may be a secret value: what follows the first `=` of
+ * any token other than a scope flag's own `--flag=value`, a swallowed pair in
+ * a scope value, and each bare token that is not the subcommand, a scope
+ * flag's value, or the one NAME given to `get`.
+ */
+function secretCandidates(argv: string[]): string[] {
+  const out: string[] = [];
+  const afterEquals = (t: string) => t.slice(t.indexOf("=") + 1);
+  let sub = "list";
+  let i = 0;
+  if (argv[0] !== undefined && !argv[0].startsWith("-")) {
+    sub = argv[0];
+    if (!SUBCOMMANDS.includes(sub)) out.push(sub);
+    i = 1;
+  }
+  let nameSeen = false;
+  for (; i < argv.length; i++) {
+    const token = argv[i];
+    const next = argv[i + 1];
+    const scopeEq = SCOPE_FLAGS.find((f) => token.startsWith(`${f}=`));
+    if (scopeEq !== undefined) {
+      const value = token.slice(scopeEq.length + 1);
+      if (value.includes("=")) out.push(afterEquals(value));
+      continue;
+    }
+    if (SCOPE_FLAGS.includes(token)) {
+      if (next !== undefined && !next.startsWith("-") && !next.includes("=")) {
+        i++;
+      }
+      continue;
+    }
+    if (token.includes("=")) out.push(afterEquals(token));
+    else if (!token.startsWith("-")) {
+      if (sub === "get" && !nameSeen) nameSeen = true;
+      else out.push(token);
+    }
+  }
+  return out.filter((v) => v !== "");
+}
+
+function maskError(error: unknown, secrets: string[]): AxiError {
+  if (!(error instanceof AxiError)) {
+    return new AxiError(
+      "`variables` failed unexpectedly (details not shown: they may contain a value)",
+      "UNKNOWN",
+    );
+  }
+  return new AxiError(
+    redactText(error.message, secrets),
+    error.code,
+    error.suggestions.map((s) => redactText(s, secrets)),
+  );
+}
 
 export async function variablesCommand(args: string[]): Promise<string> {
+  const secrets = secretCandidates(args);
+  try {
+    return await dispatch(args, secrets);
+  } catch (error) {
+    throw maskError(error, secrets);
+  }
+}
+
+async function dispatch(args: string[], secrets: string[]): Promise<string> {
   // A bare `variables` (or one that starts with a flag) lists, the safe read.
   const sub =
     args[0] === undefined || args[0].startsWith("-") ? "list" : args.shift()!;
   switch (sub) {
     case "list":
-      return listVariables(args);
+      return listVariables(args, secrets);
     case "get":
-      return getVariable(args);
+      return getVariable(args, secrets);
     case "set":
-      return setVariables(args);
+      return setVariables(args, secrets);
     default:
       throw new AxiError(
         `unknown subcommand ${sub} for \`variables\``,
@@ -75,28 +145,28 @@ async function resolveScope(scope: Scope, command: string): Promise<Scope> {
 }
 
 function takeVariablesScope(args: string[]): Scope {
-  try {
-    return takeScope(args);
-  } catch (error) {
-    if (
-      error instanceof AxiError &&
-      error.message.includes("looks like an option")
-    ) {
-      const flag = error.message.split(" ")[0];
+  const scope = takeScope(args);
+  for (const [key, value] of Object.entries(scope)) {
+    if (value?.includes("=")) {
       throw new AxiError(
-        `${flag} requires a value, but the next argument looks like an option (not shown: it may be a value)`,
+        `--${key} was given a NAME=value pair as its value (not shown: it may be a value)`,
         "VALIDATION_ERROR",
-        [`Use \`${flag}=<value>\` for a value that starts with a dash`],
+        [
+          `Give --${key} a name, then the pairs: \`--${key} <name> NAME=value\``,
+        ],
       );
     }
-    throw error;
   }
+  return scope;
 }
 
-function fetchVariables(scope: Scope): Promise<Record<string, string>> {
+function fetchVariables(
+  scope: Scope,
+  secrets: string[],
+): Promise<Record<string, string>> {
   return railwayJson<Record<string, string>>(
     ["variable", "list", "--json", ...scopeArgs(scope)],
-    { secret: true },
+    { secret: true, redact: secrets },
   );
 }
 
@@ -107,11 +177,14 @@ function where(scope: Scope): string {
   return parts.length > 0 ? ` (${parts.join(", ")})` : "";
 }
 
-async function listVariables(args: string[]): Promise<string> {
+async function listVariables(
+  args: string[],
+  secrets: string[],
+): Promise<string> {
   const scope = takeVariablesScope(args);
   assertNoArgs("variables list", args);
   const resolved = await resolveScope(scope, "variables list");
-  return renderVariableNames(await fetchVariables(resolved), resolved);
+  return renderVariableNames(await fetchVariables(resolved, secrets), resolved);
 }
 
 export function renderVariableNames(
@@ -134,7 +207,7 @@ export function renderVariableNames(
   ]);
 }
 
-async function getVariable(args: string[]): Promise<string> {
+async function getVariable(args: string[], secrets: string[]): Promise<string> {
   const scope = takeVariablesScope(args);
   const name = takePositional(args);
   if (name === undefined) {
@@ -144,9 +217,20 @@ async function getVariable(args: string[]): Promise<string> {
       ["Run `railway-axi variables get <NAME> [--service <name>]`"],
     );
   }
+  if (name.includes("=")) {
+    throw new AxiError(
+      "`variables get` takes a NAME, not NAME=value (not shown: it may be a value)",
+      "VALIDATION_ERROR",
+      ["Run `railway-axi variables set <NAME=value>` to set a variable"],
+    );
+  }
   assertNoArgs("variables get", args);
   const resolved = await resolveScope(scope, "variables get");
-  return renderVariable(name, await fetchVariables(resolved), resolved);
+  return renderVariable(
+    name,
+    await fetchVariables(resolved, secrets),
+    resolved,
+  );
 }
 
 export function renderVariable(
@@ -171,8 +255,6 @@ export function renderVariable(
   });
 }
 
-const SCOPE_FLAGS = ["--project", "--environment", "--service"];
-
 /** Indexes into `original` of the tokens takeScope and --skip-deploys left. */
 function pairSlots(original: string[]): number[] {
   const taken = new Set<number>();
@@ -192,7 +274,10 @@ function pairSlots(original: string[]): number[] {
 // Railway splits each pair on the first `=`, so only the name is constrained.
 const PAIR_RE = /^[^\s=]+=/;
 
-async function setVariables(args: string[]): Promise<string> {
+async function setVariables(
+  args: string[],
+  secrets: string[],
+): Promise<string> {
   const original = [...args];
   const scope = takeVariablesScope(args);
   const skipDeploys = takeBoolFlag(args, "--skip-deploys");
@@ -227,7 +312,7 @@ async function setVariables(args: string[]): Promise<string> {
       "--",
       ...pairs,
     ],
-    { secret: true, redact: pairs.map((p) => p.slice(p.indexOf("=") + 1)) },
+    { secret: true, redact: secrets },
   );
   return renderSet(
     pairs.map((p) => p.slice(0, p.indexOf("="))),
