@@ -173,3 +173,64 @@ describe("variables never leaks a value", () => {
     expect(out).not.toContain(OTHER);
   });
 });
+
+// The table above holds the cases someone thought of. This sweep holds the
+// ones nobody did: the canary goes into every position of each subcommand's
+// argv in every shape an agent could mistype, and railway fails echoing its
+// whole argv. Bare-token shapes go only at the end, where the canary cannot
+// legitimately be a scope flag's value or the NAME `get` reads.
+describe("variables never leaks a value from any argv position", () => {
+  const BASES: Record<string, string[]> = {
+    list: ["list", "--service", "web"],
+    get: ["get", "PORT", "--service", "web"],
+    set: ["set", "A=1", "--service", "web"],
+  };
+  const SHAPES: string[][] = [
+    [`-${CANARY}`],
+    [`--${CANARY}`],
+    [`X=${CANARY}`],
+    [`-X=${CANARY}`],
+    [`--service=X=${CANARY}`],
+    ["--service", `-${CANARY}`],
+    ["--service", `X=${CANARY}`],
+    ["--environment", `-${CANARY}`],
+    ["--skip-deploys", `-${CANARY}`],
+  ];
+  const TAIL_SHAPES: string[][] = [[CANARY], ["-", CANARY]];
+
+  const sweep: Array<{ label: string; args: string[] }> = [];
+  for (const [sub, base] of Object.entries(BASES)) {
+    for (const shape of SHAPES) {
+      for (let at = 1; at <= base.length; at++) {
+        const args = [...base.slice(0, at), ...shape, ...base.slice(at)];
+        sweep.push({ label: args.join(" "), args });
+      }
+    }
+    for (const shape of TAIL_SHAPES) {
+      const args = [...base, ...shape];
+      sweep.push({ label: args.join(" "), args });
+    }
+    // A bare `variables` with flags lists, so sweep that form too.
+    if (sub === "list") {
+      for (const shape of SHAPES) {
+        const args = [...shape, "--service", "web"];
+        sweep.push({ label: args.join(" "), args });
+      }
+    }
+  }
+
+  it.each(sweep)("$label", async ({ args }) => {
+    vi.mocked(execFile).mockImplementation(((...callArgs: unknown[]) => {
+      const argv = callArgs[1] as string[];
+      const callback = callArgs.at(-1) as (
+        e: unknown,
+        stdout: string,
+        stderr: string,
+      ) => void;
+      const echo = `error: ${argv.join(" ")}`;
+      callback(Object.assign(new Error("exit"), { code: 1 }), echo, echo);
+    }) as unknown as typeof execFile);
+    const out = await visible(args);
+    expect(out).not.toContain(CANARY);
+  });
+});
