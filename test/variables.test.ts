@@ -164,13 +164,18 @@ describe("variables set", () => {
     expect(exec).not.toHaveBeenCalled();
   });
 
-  it("rejects a malformed pair before any railway call, naming only the key", async () => {
+  it("rejects a malformed pair before any railway call, naming only its position", async () => {
     await expect(
       variablesCommand(["set", "=secret", "--service", "web"]),
     ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
     await expect(
       variablesCommand(["set", "JUSTAKEY", "--service", "web"]),
-    ).rejects.toMatchObject({ message: 'expected NAME=value, got "JUSTAKEY"' });
+    ).rejects.toMatchObject({
+      message: expect.stringMatching(/^argument 1 of `variables set` is not/),
+    });
+    await expect(
+      variablesCommand(["set", "--servce", "web", "--service", "web"]),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
     await expect(
       variablesCommand(["set", "--service", "web"]),
     ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });

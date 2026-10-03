@@ -84,6 +84,24 @@ const cases: Array<{ name: string; args: string[]; run: FakeRun }> = [
     },
   },
   {
+    name: "set: failure echoing a value that another value prefixes",
+    args: ["set", "A=sk_live", `B=sk_live_${CANARY}`, "--service", "web"],
+    run: {
+      stderr: `error: failed to set A=sk_live B=sk_live_${CANARY}`,
+      exitCode: 1,
+    },
+  },
+  {
+    name: "set: a bare value with no NAME=",
+    args: ["set", "API_KEY=x", CANARY, "--service", "web"],
+    run: {},
+  },
+  {
+    name: "set: a pair whose name starts with a dash",
+    args: ["set", `-K=${CANARY}`, "--service", "web"],
+    run: {},
+  },
+  {
     name: "set: success that echoes values",
     args: ["set", `API_KEY=${CANARY}`, "--service", "web"],
     run: { stdout: `Set API_KEY=${CANARY}` },
