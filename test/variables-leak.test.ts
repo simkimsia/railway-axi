@@ -102,6 +102,21 @@ const cases: Array<{ name: string; args: string[]; run: FakeRun }> = [
     run: {},
   },
   {
+    name: "set: a dash-leading pair right after a scope flag",
+    args: ["set", "--service", `-K=${CANARY}`],
+    run: {},
+  },
+  {
+    name: "get: a dash-leading token right after a scope flag",
+    args: ["get", "PORT", "--service", `-K=${CANARY}`],
+    run: {},
+  },
+  {
+    name: "list: a dash-leading token right after a scope flag",
+    args: ["list", "--environment", `-K=${CANARY}`],
+    run: {},
+  },
+  {
     name: "set: success that echoes values",
     args: ["set", `API_KEY=${CANARY}`, "--service", "web"],
     run: { stdout: `Set API_KEY=${CANARY}` },
