@@ -6,6 +6,7 @@ vi.mock("node:child_process", () => ({ execFile: vi.fn() }));
 
 import { execFile } from "node:child_process";
 import { variablesCommand } from "../src/commands/variables.js";
+import { REPORT_SUGGESTION } from "../src/errors.js";
 
 const CANARY = "canary-secret-value";
 const OTHER = "other-canary-secret";
@@ -164,6 +165,21 @@ describe("variables never leaks a value", () => {
     expect(out).toContain(CANARY);
     expect(out).not.toContain(OTHER);
   });
+
+  it.each([
+    { name: "list", args: ["list", "--service", "web"] },
+    { name: "get", args: ["get", "PORT", "--service", "web"] },
+    { name: "set", args: ["set", "A=1", "--service", "web"] },
+  ])(
+    "$name: an unrecognized railway failure suggests only reporting the gap",
+    async ({ args }) => {
+      fakeRailway({ stderr: "error: something new went wrong", exitCode: 1 });
+      await expect(variablesCommand(args)).rejects.toMatchObject({
+        code: "UNKNOWN",
+        suggestions: [REPORT_SUGGESTION],
+      });
+    },
+  );
 
   it("list prints names only", async () => {
     fakeRailway({ stdout: JSON.stringify({ PORT: CANARY, API_KEY: OTHER }) });
