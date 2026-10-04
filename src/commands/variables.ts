@@ -4,7 +4,7 @@ import {
   takeBoolFlag,
   takePositional,
 } from "../args.js";
-import { AxiError } from "../errors.js";
+import { AxiError, REPORT_SUGGESTION } from "../errors.js";
 import {
   railwayExec,
   railwayJson,
@@ -95,6 +95,7 @@ function maskError(error: unknown, secrets: string[]): AxiError {
     return new AxiError(
       "`variables` failed unexpectedly (details not shown: they may contain a value)",
       "UNKNOWN",
+      [REPORT_SUGGESTION],
     );
   }
   return new AxiError(

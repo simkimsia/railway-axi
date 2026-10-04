@@ -18,7 +18,7 @@ export class AxiError extends Error {
   }
 }
 
-export function exitCodeForError(error: AxiError): number {
+export function exitCodeForError(error: { code: string }): number {
   return error.code === "VALIDATION_ERROR" ? 2 : 1;
 }
 
@@ -109,8 +109,16 @@ export function mapRailwayError(stderr: string, exitCode: number): AxiError {
   return new AxiError(
     firstLine(trimmed) || `railway exited with code ${exitCode}`,
     "UNKNOWN",
+    [UNKNOWN_SUGGESTION],
   );
 }
+
+export const UNKNOWN_SUGGESTION =
+  "Rerun the same command with plain `railway` to see its full output, then report the gap at https://github.com/simkimsia/railway-axi/issues";
+
+/** For failures whose raw output may hold secret values, so no rerun is suggested. */
+export const REPORT_SUGGESTION =
+  "Report the gap at https://github.com/simkimsia/railway-axi/issues";
 
 function firstLine(text: string): string {
   return text.split("\n", 1)[0] ?? "";
