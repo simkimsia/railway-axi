@@ -60,6 +60,8 @@ export async function main(): Promise<void> {
     getCommandHelp: (command) => COMMAND_HELP[command],
     // The SDK's default formatter only recognizes its own AxiError class, so
     // route this package's AxiError through an equivalent hook (gh-axi pattern).
+    // SDK AxiErrors keep their own code/help/exit code; only foreign throws
+    // become UNKNOWN.
     formatError: (error) => {
       const axiError =
         error instanceof AxiError || error instanceof SdkAxiError

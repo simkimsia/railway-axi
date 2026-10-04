@@ -4,11 +4,7 @@ import {
   takeBoolFlag,
   takePositional,
 } from "../args.js";
-import {
-  AxiError,
-  REPORT_SUGGESTION,
-  UNKNOWN_SUGGESTION,
-} from "../errors.js";
+import { AxiError, REPORT_SUGGESTION, UNKNOWN_SUGGESTION } from "../errors.js";
 import {
   railwayExec,
   railwayJson,
