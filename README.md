@@ -20,7 +20,7 @@ mutating command.
 
 ## Install
 
-Not on npm yet, so `npx -y railway-axi` does not work. Install from a clone:
+Not on npm yet, so `npx -y @simkimsia/railway-axi` does not work. Install from a clone:
 
 ```sh
 git clone https://github.com/simkimsia/railway-axi
