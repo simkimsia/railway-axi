@@ -4,7 +4,11 @@ import {
   takeBoolFlag,
   takePositional,
 } from "../args.js";
-import { AxiError, REPORT_SUGGESTION } from "../errors.js";
+import {
+  AxiError,
+  REPORT_SUGGESTION,
+  UNKNOWN_SUGGESTION,
+} from "../errors.js";
 import {
   railwayExec,
   railwayJson,
@@ -101,7 +105,9 @@ function maskError(error: unknown, secrets: string[]): AxiError {
   return new AxiError(
     redactText(error.message, secrets),
     error.code,
-    error.suggestions.map((s) => redactText(s, secrets)),
+    error.suggestions.map((s) =>
+      s === UNKNOWN_SUGGESTION ? REPORT_SUGGESTION : redactText(s, secrets),
+    ),
   );
 }
 

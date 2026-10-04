@@ -69,7 +69,14 @@ async function runChecked(
   if (result.stderr === "ENOENT") throw railwayNotInstalledError();
   if (result.exitCode !== 0) {
     const text = opts.secret ? result.stderr : result.stderr || result.stdout;
-    throw mapRailwayError(redactText(text, opts.redact ?? []), result.exitCode);
+    const error = mapRailwayError(
+      redactText(text, opts.redact ?? []),
+      result.exitCode,
+    );
+    if (opts.secret && error.code === "UNKNOWN") {
+      throw new AxiError(error.message, error.code, [REPORT_SUGGESTION]);
+    }
+    throw error;
   }
   return result.stdout;
 }
