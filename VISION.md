@@ -12,7 +12,7 @@ Every Railway call reuses the session `railway login` already holds; we do not a
 We do not call Railway's MCP server; its tools are reached through `railway` or `railway api`.
 Every MCP tool maps to an existing CLI command or public API operation, and keeping the MCP server out keeps it a separate arm in `bench/`.
 
-The `bench/` directory, which measures railway-axi against the raw `railway` CLI and Railway's MCP server, is in scope and does not ship in the published package.
+The `bench/` directory, which will measure railway-axi against the raw `railway` CLI and Railway's MCP server, is in scope and does not ship in the published package.
 
 We accept contributions that expose existing Railway capabilities more ergonomically.
 We do not add functionality that Railway itself does not provide, and we do not embed workflow logic that belongs in the calling agent.
@@ -34,5 +34,5 @@ The wrapper may reshape, combine, or simplify `railway` and API operations when 
 Read commands are the default and never change project state.
 Write commands are explicit, named as verbs, and print what changed, including any redeploy they trigger.
 A command that deletes or overwrites requires the target to be named in full.
-When several projects, environments, or services could match, the command refuses and lists the names; it never infers the target from context.
+When several services could match and none is named with a flag or linked to the current directory, the command refuses and lists the names; it never guesses.
 Variable values are printed only by a command that names one variable, and never appear in lists, errors, or logs.
