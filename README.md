@@ -20,17 +20,22 @@ mutating command.
 
 ## Install
 
-Not on npm yet, so `npx -y @simkimsia/railway-axi` does not work. Install from a clone:
+```sh
+pnpm add -g @simkimsia/railway-axi
+```
+
+Or run it without installing: `npx -y @simkimsia/railway-axi --help`.
+
+Check it: `railway-axi --version`. Update later with `railway-axi update`.
+
+To work on it from a clone:
 
 ```sh
 git clone https://github.com/simkimsia/railway-axi
-pnpm --prefix railway-axi install
-pnpm --prefix railway-axi run build
+pnpm -C railway-axi install
+pnpm -C railway-axi run build
 pnpm add -g link:$PWD/railway-axi   # puts `railway-axi` on PATH
 ```
-
-Check it: `railway-axi --version`. To update later, `git pull` in the clone
-and run the build step again.
 
 ## Usage
 
