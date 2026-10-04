@@ -3,6 +3,8 @@ import {
   AxiError,
   mapRailwayError,
   railwayNotInstalledError,
+  REPORT_SUGGESTION,
+  UNKNOWN_SUGGESTION,
 } from "./errors.js";
 
 export interface ExecResult {
@@ -86,6 +88,7 @@ export async function railwayJson<T = unknown>(
         ? "Unexpected railway output (not shown: it may contain secret values)"
         : `Unexpected railway output: ${stdout.slice(0, 200)}`,
       "UNKNOWN",
+      [opts.secret ? REPORT_SUGGESTION : UNKNOWN_SUGGESTION],
     );
   }
 }
