@@ -82,6 +82,16 @@ describe("logsCommand", () => {
     ]);
   });
 
+  it("refuses --build with --http and says how to get both", async () => {
+    await expect(logsCommand(["--build", "--http"])).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      suggestions: [
+        "Drop one of the two flags; run them as two separate `logs` calls",
+      ],
+    });
+    expect(json).not.toHaveBeenCalled();
+  });
+
   it("refuses a deployment id with several services and no --service", async () => {
     // A uuid skips the `railway list` name lookup, so service list is call one.
     const project = "0a0a0a0a-0000-4000-8000-000000000000";

@@ -68,6 +68,7 @@ export async function logsCommand(args: string[]): Promise<string> {
     throw new AxiError(
       "--build and --http are mutually exclusive",
       "VALIDATION_ERROR",
+      ["Drop one of the two flags; run them as two separate `logs` calls"],
     );
   }
   const kind: LogKind = build ? "build" : http ? "http" : "deploy";

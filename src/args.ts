@@ -52,7 +52,9 @@ export function takeFlag(args: string[], flag: string): string | undefined {
     if (arg.startsWith(equalsPrefix)) {
       const value = arg.slice(equalsPrefix.length);
       if (value.trim() === "") {
-        throw new AxiError(`${flag} requires a value`, "VALIDATION_ERROR");
+        throw new AxiError(`${flag} requires a value`, "VALIDATION_ERROR", [
+          `Use \`${flag} <value>\` or \`${flag}=<value>\``,
+        ]);
       }
       args.splice(i, 1);
       return value;
@@ -86,11 +88,14 @@ export function takeIntFlag(
     throw new AxiError(
       `${flag} must be a positive integer, got ${raw}`,
       "VALIDATION_ERROR",
+      [`Pass a whole number of at least 1, e.g. \`${flag} ${fallback}\``],
     );
   }
   const n = Number(raw);
   if (n < 1) {
-    throw new AxiError(`${flag} must be at least 1`, "VALIDATION_ERROR");
+    throw new AxiError(`${flag} must be at least 1`, "VALIDATION_ERROR", [
+      `Pass a whole number of at least 1, e.g. \`${flag} ${fallback}\``,
+    ]);
   }
   return Math.min(n, max);
 }

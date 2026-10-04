@@ -86,6 +86,15 @@ describe("takeFlag", () => {
     );
   });
 
+  it("points an empty equals form at both accepted forms", () => {
+    expect(() => takeFlag(["--service="], "--service")).toThrow(
+      expect.objectContaining({
+        code: "VALIDATION_ERROR",
+        suggestions: ["Use `--service <value>` or `--service=<value>`"],
+      }),
+    );
+  });
+
   it("accepts a dash-leading value through the equals form", () => {
     expect(takeFlag(["--filter=-weird"], "--filter")).toBe("-weird");
   });
@@ -117,6 +126,16 @@ describe("takeIntFlag", () => {
     expect(
       codeOf(() => takeIntFlag(["--limit", "0"], "--limit", 20, 100)),
     ).toBe("VALIDATION_ERROR");
+  });
+
+  it("gives non-integers and zero an example value as the next step", () => {
+    const help = ["Pass a whole number of at least 1, e.g. `--limit 20`"];
+    expect(() => takeIntFlag(["--limit", "many"], "--limit", 20, 100)).toThrow(
+      expect.objectContaining({ suggestions: help }),
+    );
+    expect(() => takeIntFlag(["--limit", "0"], "--limit", 20, 100)).toThrow(
+      expect.objectContaining({ suggestions: help }),
+    );
   });
 });
 
