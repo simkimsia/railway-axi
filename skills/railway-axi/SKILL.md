@@ -17,14 +17,9 @@ raw `railway` for Railway operations: TOON output, structured errors with
 
 ## Setup
 
-railway-axi is not on npm yet. Run it from a clone:
-
-```sh
-git clone https://github.com/simkimsia/railway-axi
-pnpm --prefix railway-axi install
-pnpm --prefix railway-axi run build
-pnpm add -g link:$PWD/railway-axi   # puts `railway-axi` on PATH
-```
+Install with `pnpm add -g @simkimsia/railway-axi`, or run it without installing
+via `npx -y @simkimsia/railway-axi`. The README's Install section covers working
+from a clone.
 
 It wraps [`railway`](https://docs.railway.com/guides/cli), which must be installed and logged in
 (`railway login`). If a command fails with `RAILWAY_NOT_INSTALLED`, ask the user to
