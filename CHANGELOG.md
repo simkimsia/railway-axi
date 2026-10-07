@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.2](https://github.com/simkimsia/railway-axi/compare/railway-axi-v0.1.1...railway-axi-v0.1.2) (2026-10-07)
+
+
+### Features
+
+* AXI_DEBUG=1 prints forwarded railway argv to stderr ([a9da1d1](https://github.com/simkimsia/railway-axi/commit/a9da1d1a2650ef13e37a708b783b909805ef5f71)), closes [#26](https://github.com/simkimsia/railway-axi/issues/26)
+
+
+### Bug Fixes
+
+* give the remaining validation errors a next step ([d6c92a5](https://github.com/simkimsia/railway-axi/commit/d6c92a5d34c572934402c8489e33e412b18f1a6b))
+
 ## [0.1.1](https://github.com/simkimsia/railway-axi/compare/railway-axi-v0.1.0...railway-axi-v0.1.1) (2026-10-04)
 
 
