@@ -38,7 +38,9 @@ Today's surface is mostly read-only: `list` (all projects in the account), `stat
 
 ## When railway-axi cannot do it
 
-1. Try `railway-axi <command>` first and read the structured error.
+1. Try `railway-axi <command>` first and read the structured error. To see
+   the exact `railway` argv it forwarded, rerun with `AXI_DEBUG=1` (printed
+   on stderr, values from `variables set` masked).
 2. If the error is `VALIDATION_ERROR` with `Unknown command`, or the command
    exists but lacks the flag you need, fall back to raw `railway` and finish
    the user's task. Examples: `railway domain list`, `railway metrics`, `railway environment list`.
@@ -70,6 +72,12 @@ Today's surface is mostly read-only: `list` (all projects in the account), `stat
 
    ## Task context
    <one line on the user task that needed this>
+
+   ## Plain CLI result
+   With the exact argv the axi forwarded (`AXI_DEBUG=1`): works, same failure, or n/a.
+
+   ## If same failure
+   Should the axi shape the arguments, map the error, or document the limit?
    ```
 
    Tell the user you filed it and link the issue. One issue per missing

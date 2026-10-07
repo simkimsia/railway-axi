@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Fake the railway binary itself, not railwayJson/railwayExec, so the real
 // parse and error-mapping paths in src/railway.ts and src/errors.ts run.
@@ -43,8 +43,22 @@ async function visible(args: string[]): Promise<string> {
   }
 }
 
+// Every case runs with AXI_DEBUG=1, and the argv lines it prints on stderr
+// count as visible too: no value may reach them either.
+let debugSpy: ReturnType<typeof vi.spyOn>;
+
 beforeEach(() => {
   vi.mocked(execFile).mockReset();
+  vi.stubEnv("AXI_DEBUG", "1");
+  debugSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+});
+
+afterEach(() => {
+  const printed = debugSpy.mock.calls.map((c) => String(c[0])).join("");
+  debugSpy.mockRestore();
+  vi.unstubAllEnvs();
+  expect(printed).not.toContain(CANARY);
+  expect(printed).not.toContain(OTHER);
 });
 
 // Each case is one way railway can misbehave. No case may surface a value

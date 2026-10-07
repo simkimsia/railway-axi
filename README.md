@@ -78,6 +78,10 @@ Variable values are secrets, so `variables list` prints names only, `get`
 prints the one value asked for, and `set` reports the names it set and whether
 a redeploy was triggered without echoing any value.
 
+Set `AXI_DEBUG=1` to print each `railway` argv the axi forwards on stderr, one
+line per call, ready to rerun against the plain CLI. Values passed to
+`variables set` are masked. stdout is unchanged.
+
 ## Agent skill
 
 Install the bundled skill so your coding agent prefers `railway-axi` over raw
