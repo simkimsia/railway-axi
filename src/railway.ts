@@ -15,7 +15,27 @@ export interface ExecResult {
 
 const MAX_BUFFER_BYTES = 10 * 1024 * 1024; // 10 MB
 
-function run(args: string[]): Promise<ExecResult> {
+/** Quote one argv token for a copy-pasteable shell line. */
+export function shellQuote(token: string): string {
+  if (/^[\w@%+=:,./-]+$/.test(token)) return token;
+  return `'${token.replace(/'/g, `'\\''`)}'`;
+}
+
+/**
+ * With `AXI_DEBUG=1`, print the exact argv sent to railway on stderr, so a
+ * gap can be reproduced against the plain CLI with what the axi forwarded,
+ * not a hand-retyped command. Each `redact` value is masked before quoting,
+ * so a secret never reaches the line. stdout stays clean TOON.
+ */
+export function debugLine(args: string[], redact: string[] = []): string {
+  const shown = args.map((a) => shellQuote(redactText(a, redact)));
+  return `[axi-debug] railway ${shown.join(" ")}`;
+}
+
+function run(args: string[], redact: string[] = []): Promise<ExecResult> {
+  if (process.env.AXI_DEBUG === "1") {
+    process.stderr.write(`${debugLine(args, redact)}\n`);
+  }
   return new Promise((resolve) => {
     execFile(
       "railway",
@@ -65,7 +85,7 @@ async function runChecked(
   args: string[],
   opts: SecretOptions = {},
 ): Promise<string> {
-  const result = await run(args);
+  const result = await run(args, opts.redact);
   if (result.stderr === "ENOENT") throw railwayNotInstalledError();
   if (result.exitCode !== 0) {
     const text = opts.secret ? result.stderr : result.stderr || result.stdout;
