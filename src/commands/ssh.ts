@@ -247,11 +247,17 @@ function checkObsoleteCounts(name: string, rest: string[], scope: Scope): void {
 
 /**
  * `tail +N FILE` (from line N): GNU tail reads `+N` as the count only when it
- * is the first word and one file follows, so only that shape skips the path
- * check for `+N`; anywhere else `+N` is a file name and is checked.
+ * is the first word and one file (not an option, `-` is stdin) follows, so
+ * only that shape skips the path check for `+N`; anywhere else, including
+ * `tail +5 -v`, `+N` is a file name and is checked.
  */
 function isTailFromLine(name: string, rest: string[]): boolean {
-  return name === "tail" && rest.length === 2 && /^\+\d+$/.test(rest[0]);
+  return (
+    name === "tail" &&
+    rest.length === 2 &&
+    /^\+\d+$/.test(rest[0]) &&
+    (rest[1] === "-" || !rest[1].startsWith("-"))
+  );
 }
 
 /**

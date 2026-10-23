@@ -397,6 +397,7 @@ describe("ssh file commands read only allowlisted paths", () => {
     ["tail", "-n", "50", "/var/log/app.log"],
     ["tail", "-50", "/var/log/app.log"],
     ["tail", "+5", "/app/x"],
+    ["tail", "+5", "-"],
     ["head", "-n", "5", "/app/x"],
     ["head", "-c", "5", "/app/x"],
     ["head", "-c5", "/app/x"],
@@ -455,6 +456,10 @@ describe("ssh file commands read only allowlisted paths", () => {
     [["tail", "+5", "/etc/shadow"], "outside the paths"],
     [["tail", "+5", "/app/x", "/app/y"], "relative"],
     [["tail", "/app/x", "+5"], "relative"],
+    [["tail", "+5", "-v"], "relative"],
+    [["tail", "+5", "--verbose"], "relative"],
+    [["tail", "+5", "-q"], "relative"],
+    [["tail", "+5", "--", "/app/x"], "relative"],
     [["ls", "--hyperlink", "/etc"], "outside the paths"],
     [
       ["du", "-a", "--exclude-f", "/etc/os-release"],
