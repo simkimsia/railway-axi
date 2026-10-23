@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.3](https://github.com/simkimsia/railway-axi/compare/railway-axi-v0.1.2...railway-axi-v0.1.3) (2026-10-23)
+
+
+### Features
+
+* add redeploy command ([208b559](https://github.com/simkimsia/railway-axi/commit/208b5591ee72e2da787698e26fde44d7120a5724)), closes [#29](https://github.com/simkimsia/railway-axi/issues/29)
+* add ssh command for one-off read-only container commands ([cab9a0d](https://github.com/simkimsia/railway-axi/commit/cab9a0d36a95a07ff5bd2cebc7f9947d32d31dc9)), closes [#28](https://github.com/simkimsia/railway-axi/issues/28) [#32](https://github.com/simkimsia/railway-axi/issues/32)
+
+
+### Bug Fixes
+
+* read tail +N as a count only before a file operand ([1784787](https://github.com/simkimsia/railway-axi/commit/178478717fcef0dc879d6493d9b46b5db0d538f4)), closes [#35](https://github.com/simkimsia/railway-axi/issues/35)
+* refuse obsolete head/tail count syntax that hides a file ([f15f13b](https://github.com/simkimsia/railway-axi/commit/f15f13b25c31329090327b692e5732e7a96a817a)), closes [#35](https://github.com/simkimsia/railway-axi/issues/35)
+* restrict ssh file commands to allowlisted paths ([326ebab](https://github.com/simkimsia/railway-axi/commit/326ebabc1577c6ccefa630460109040e9a8632ba)), closes [#35](https://github.com/simkimsia/railway-axi/issues/35)
+* shell-quote scope values in printed next-step hints ([a811f49](https://github.com/simkimsia/railway-axi/commit/a811f49b15971da1f689d57f60ad0c27b40404e6)), closes [#32](https://github.com/simkimsia/railway-axi/issues/32)
+
 ## [0.1.2](https://github.com/simkimsia/railway-axi/compare/railway-axi-v0.1.1...railway-axi-v0.1.2) (2026-10-07)
 
 
