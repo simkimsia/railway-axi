@@ -23,7 +23,9 @@ const SSH_COMMAND_MAX = 512;
  * railway call. Each entry says which arguments it takes:
  * - "none": no arguments at all (`hostname x` would set the hostname);
  * - "flags": option tokens only;
- * - "any": options and operands (paths), each checked against SENSITIVE.
+ * - "any": options and operands, each checked against SENSITIVE; the file
+ *   commands in OPTION_SPECS also need every path they read or list to be
+ *   under READABLE_TREES or READABLE_FILES.
  */
 type ArgPolicy = "none" | "flags" | "any";
 
@@ -62,13 +64,13 @@ const SAFE_LINE = /^[A-Za-z0-9_./:=,@%+\- \t]*$/;
 /**
  * Paths whose contents are secrets even through an allowed reader: process
  * environments (the same values `variables` never lists), dotenv files,
- * mounted secrets and credential files. Best effort: a symlink to one of these
- * under another name is not caught, which is one reason the reader set is
- * small.
+ * mounted secrets and credential files. A denylist is best effort (a symlink
+ * or an unusual name is not caught), so it is the second layer: the first is
+ * READABLE, which every path a file command touches must be under.
  */
 const SENSITIVE: RegExp[] = [
   /environ/i,
-  /(^|[/=])\.env($|[./])/i,
+  /(^|[/=])\.env(rc)?($|[./])/i,
   /(^|[/=])secrets($|\/)/i,
   /(^|[/=])\.ssh($|\/)/i,
   /(^|[/=])\.(netrc|pgpass|npmrc|git-credentials|aws|docker|kube)($|\/)/i,
@@ -84,6 +86,46 @@ function pathSpellings(word: string): string[] {
   const eq = word.indexOf("=");
   const parts = eq === -1 ? [word] : [word, word.slice(eq + 1)];
   return [word, ...parts.map((p) => posix.normalize(p).replace(/\/+/g, "/"))];
+}
+
+/**
+ * Directory trees a file command may touch: the path itself and everything
+ * below it. `/app` is where Railway's builders (Railpack, Nixpacks) put the
+ * app; `/var/log` holds system and app log files; `/sys/fs/cgroup` holds the
+ * container's memory and CPU limits and usage (why was it OOM-killed).
+ */
+export const READABLE_TREES = ["/app", "/var/log", "/sys/fs/cgroup"];
+
+/**
+ * Single files outside those trees: the OS release, system-wide load and
+ * memory, and the per-process files that show what `ps` shows. Never
+ * `/proc/<pid>/environ`, `root`, `cwd`, `fd` or `mem`, which reach other
+ * files or a process's memory.
+ */
+export const READABLE_FILES: RegExp[] = [
+  /^\/etc\/os-release$/,
+  /^\/proc\/(meminfo|loadavg|uptime|cpuinfo|version)$/,
+  /^\/proc\/(\d+|self)\/(cmdline|status|stat|statm|limits)$/,
+];
+
+const READABLE_HINT =
+  `Readable paths: ${READABLE_TREES.join(", ")} and below; /etc/os-release, ` +
+  "/proc/{meminfo,loadavg,uptime,cpuinfo,version}, " +
+  "/proc/<pid>/{cmdline,status,stat,statm,limits}";
+
+/** `/app//log/` and `/app/./log` are `/app/log`; a trailing `/` is dropped. */
+function canonicalPath(path: string): string {
+  const normal = posix.normalize(path).replace(/\/+/g, "/");
+  return normal.length > 1 ? normal.replace(/\/$/, "") : normal;
+}
+
+export function isReadablePath(path: string): boolean {
+  const canonical = canonicalPath(path);
+  return (
+    READABLE_TREES.some(
+      (tree) => canonical === tree || canonical.startsWith(`${tree}/`),
+    ) || READABLE_FILES.some((re) => re.test(canonical))
+  );
 }
 
 export interface SshCommand {
@@ -161,8 +203,306 @@ export function parseSshCommand(tokens: string[], scope: Scope): SshCommand {
       );
     }
   }
+  const spec = Object.hasOwn(OPTION_SPECS, name)
+    ? OPTION_SPECS[name]
+    : undefined;
+  if (spec !== undefined) {
+    const parsed = parseOptions(name, rest, spec, scope);
+    for (const path of parsed.paths) checkPath(path, scope);
+    if (PATH_OPERANDS.has(name)) {
+      for (const operand of parsed.operands) checkPath(operand, scope);
+    }
+    checkParsed(name, parsed, scope);
+  }
   checkCommandFlags(name, rest, scope);
   return { name, words };
+}
+
+/**
+ * How an option uses a value: "flag" takes none, "value" takes a non-path
+ * value (attached or the next word), "optional" takes one only attached
+ * (`-Iseconds`, `--color=auto`), and "path" takes a file it reads.
+ */
+type OptKind = "flag" | "value" | "optional" | "path";
+
+interface OptionSpec {
+  short: Record<string, OptKind>;
+  long: Record<string, OptKind>;
+}
+
+/**
+ * Options of the commands that take paths (GNU coreutils and busybox), so a
+ * value such as `head -n 50` is not mistaken for a path and a path hidden in
+ * an option (`du --files0-from=F`, `date -f F`) is checked. A short option
+ * not listed is taken as a flag; a long one not listed, or an abbreviation
+ * that is not exact, never consumes the next word, which is then checked as
+ * a path: an unknown option can only make the check stricter.
+ */
+const OPTION_SPECS: Record<string, OptionSpec> = {
+  cat: { short: {}, long: {} },
+  head: {
+    short: { n: "value", c: "value" },
+    long: { lines: "value", bytes: "value" },
+  },
+  tail: {
+    short: { n: "value", c: "value", s: "value" },
+    long: {
+      lines: "value",
+      bytes: "value",
+      "sleep-interval": "value",
+      pid: "value",
+      "max-unchanged-stats": "value",
+      follow: "optional",
+      retry: "flag",
+    },
+  },
+  wc: {
+    short: {},
+    long: { "files0-from": "path", total: "value" },
+  },
+  stat: {
+    short: { c: "value" },
+    long: { format: "value", printf: "value", cached: "value" },
+  },
+  du: {
+    short: { d: "value", B: "value", t: "value", X: "path" },
+    long: {
+      "max-depth": "value",
+      "block-size": "value",
+      threshold: "value",
+      exclude: "value",
+      "exclude-from": "path",
+      "files0-from": "path",
+      time: "optional",
+      "time-style": "value",
+    },
+  },
+  ls: {
+    short: { I: "value", w: "value", T: "value" },
+    long: {
+      ignore: "value",
+      hide: "value",
+      width: "value",
+      tabsize: "value",
+      "block-size": "value",
+      "time-style": "value",
+      format: "value",
+      sort: "value",
+      time: "value",
+      color: "optional",
+      "indicator-style": "value",
+      "quoting-style": "value",
+    },
+  },
+  date: {
+    short: {
+      d: "value",
+      D: "value",
+      s: "value",
+      I: "optional",
+      f: "path",
+      r: "path",
+    },
+    long: {
+      date: "value",
+      set: "value",
+      file: "path",
+      reference: "path",
+      "iso-8601": "optional",
+      "rfc-3339": "value",
+      debug: "flag",
+      utc: "flag",
+      universal: "flag",
+      "rfc-email": "flag",
+    },
+  },
+};
+
+/** Commands whose operands are paths (date's operand is a format). */
+const PATH_OPERANDS = new Set([
+  "cat",
+  "head",
+  "tail",
+  "wc",
+  "stat",
+  "du",
+  "ls",
+]);
+
+interface ParsedOptions {
+  /** Short option letters seen, value-taking ones included. */
+  short: Set<string>;
+  /** Long option names seen; an abbreviation adds every name it could mean. */
+  long: Set<string>;
+  /** Values of options that read a file. */
+  paths: string[];
+  operands: string[];
+}
+
+/**
+ * Split the words the way getopt does: clustered short options, attached or
+ * separate values, `--name=value`, unique-prefix abbreviations of long names,
+ * options after operands, and `--` ending the options.
+ */
+function parseOptions(
+  name: string,
+  rest: string[],
+  spec: OptionSpec,
+  scope: Scope,
+): ParsedOptions {
+  const parsed: ParsedOptions = {
+    short: new Set(),
+    long: new Set(),
+    paths: [],
+    operands: [],
+  };
+  for (let i = 0; i < rest.length; i++) {
+    const word = rest[i];
+    if (word === "--") {
+      parsed.operands.push(...rest.slice(i + 1));
+      break;
+    }
+    if (word === "-" || !word.startsWith("-")) {
+      parsed.operands.push(word);
+      continue;
+    }
+    if (word.startsWith("--")) {
+      const eq = word.indexOf("=");
+      const given = eq === -1 ? word.slice(2) : word.slice(2, eq);
+      const exact = Object.hasOwn(spec.long, given);
+      const names = exact
+        ? [given]
+        : Object.keys(spec.long).filter((k) => k.startsWith(given));
+      for (const n of names) parsed.long.add(n);
+      const isPath = names.some((n) => spec.long[n] === "path");
+      if (eq !== -1) {
+        // A value for an option we do not know is checked as a path too.
+        if (isPath || names.length === 0) parsed.paths.push(word.slice(eq + 1));
+      } else if (exact && spec.long[given] === "path") {
+        if (i + 1 < rest.length) parsed.paths.push(rest[++i]);
+      } else if (exact && spec.long[given] === "value") {
+        i++;
+      }
+      continue;
+    }
+    for (let j = 1; j < word.length; j++) {
+      const letter = word[j];
+      const kind = Object.hasOwn(spec.short, letter)
+        ? spec.short[letter]
+        : "flag";
+      if (kind === "flag" && !/[A-Za-z0-9]/.test(letter)) {
+        throw refuse(
+          `\`${name} ${word}\` is refused: options with a path attached are not read`,
+          scope,
+          [READABLE_HINT],
+        );
+      }
+      parsed.short.add(letter);
+      if (kind === "flag") continue;
+      const attached = word.slice(j + 1);
+      if (kind === "optional") break;
+      const value =
+        attached !== ""
+          ? attached
+          : i + 1 < rest.length
+            ? rest[++i]
+            : undefined;
+      if (kind === "path" && value !== undefined) parsed.paths.push(value);
+      break;
+    }
+  }
+  return parsed;
+}
+
+/**
+ * A path a file command reads or lists must sit under READABLE. The remote
+ * working directory is unknown (`/` when an image sets no WORKDIR), so a
+ * relative path could name any file and is refused; so is any `..`, which the
+ * kernel resolves after symlinks and so can leave a readable tree even when
+ * the spelling stays inside it. `-` is stdin, which is closed.
+ */
+function checkPath(path: string, scope: Scope): void {
+  if (path === "-") return;
+  if (path.split("/").includes("..")) {
+    throw refuse(
+      `${path} is refused: \`..\` can climb out of a readable directory`,
+      scope,
+      [READABLE_HINT],
+    );
+  }
+  const canonical = canonicalPath(path);
+  if (SENSITIVE.some((re) => re.test(canonical))) {
+    throw refuse(
+      `${path} is refused: it can hold secret values (process environments, dotenv files, credentials)`,
+      scope,
+      [
+        `Run \`railway-axi variables list${scopeHint(scope)}\` for variable names`,
+      ],
+    );
+  }
+  if (!canonical.startsWith("/")) {
+    throw refuse(
+      `${path} is relative and the remote working directory is unknown; name an absolute path`,
+      scope,
+      [
+        `Run \`railway-axi ssh${scopeHint(scope)} -- pwd\` to see the working directory`,
+        READABLE_HINT,
+      ],
+    );
+  }
+  if (!isReadablePath(canonical)) {
+    throw refuse(`${path} is outside the paths ssh may read`, scope, [
+      READABLE_HINT,
+    ]);
+  }
+}
+
+/** Rules that need the parsed options: streaming, clock setting, no directory. */
+function checkParsed(name: string, parsed: ParsedOptions, scope: Scope): void {
+  if (
+    (name === "ls" || name === "du") &&
+    parsed.operands.length === 0 &&
+    parsed.paths.length === 0
+  ) {
+    throw refuse(
+      `\`${name}\` needs a directory: the remote working directory is unknown`,
+      scope,
+      [
+        `Use \`railway-axi ssh${scopeHint(scope)} -- ${name} /app\``,
+        READABLE_HINT,
+      ],
+    );
+  }
+  if (name === "tail") {
+    if (
+      parsed.short.has("f") ||
+      parsed.short.has("F") ||
+      parsed.long.has("follow") ||
+      parsed.long.has("retry")
+    ) {
+      throw refuse(
+        "`tail` with follow or retry is refused: it never exits",
+        scope,
+        ["Use `tail -n 100 <file>` for a fixed number of lines"],
+      );
+    }
+  }
+  if (name === "date") {
+    // `date -s`/`--set` and an operand other than `+FORMAT` (`date MMDDhhmm`)
+    // set the clock; `-d <date>` only prints it.
+    const operand = parsed.operands.find((w) => !w.startsWith("+"));
+    if (
+      parsed.short.has("s") ||
+      parsed.long.has("set") ||
+      operand !== undefined
+    ) {
+      throw refuse(
+        `\`date ${operand ?? (parsed.short.has("s") ? "-s" : "--set")}\` is refused: it can set the clock`,
+        scope,
+        ["Use `date`, `date -u`, `date +%s` or `date -d <date>`"],
+      );
+    }
+  }
 }
 
 /** ps flags whose next word is a value (a format, user or pid list), not an option. */
@@ -183,22 +523,8 @@ const PS_VALUE_FLAGS = new Set([
   "--user",
 ]);
 
-/** Per-command flags that stream forever, change state or print environments. */
+/** ps flags that print environments (tail and date are in checkParsed). */
 function checkCommandFlags(name: string, rest: string[], scope: Scope): void {
-  if (name === "tail") {
-    const follows = rest.find(
-      (w) =>
-        w === "--follow" ||
-        w.startsWith("--follow=") ||
-        w === "--retry" ||
-        (/^-[^-]/.test(w) && /[fF]/.test(w)),
-    );
-    if (follows) {
-      throw refuse(`\`tail ${follows}\` is refused: it never exits`, scope, [
-        "Use `tail -n 100 <file>` for a fixed number of lines",
-      ]);
-    }
-  }
   if (name === "ps") {
     // BSD-style options (no dash) with `e` print each process's environment
     // (`ps aux e`, `ps eww`); `-e` with a dash means every process and stays.
@@ -217,35 +543,20 @@ function checkCommandFlags(name: string, rest: string[], scope: Scope): void {
       );
     }
   }
-  if (name === "date") {
-    // `date -s` and `date MMDDhhmm` set the clock; only `+FORMAT` and flags
-    // other than set pass.
-    const sets = rest.find(
-      (w) =>
-        w === "-s" ||
-        w.startsWith("--set") ||
-        (/^-[^-]/.test(w) && w.includes("s")) ||
-        (!w.startsWith("-") && !w.startsWith("+")),
-    );
-    if (sets) {
-      throw refuse(`\`date ${sets}\` is refused: it can set the clock`, scope, [
-        "Use `date`, `date -u` or `date +%s`",
-      ]);
-    }
-  }
 }
 
 export const SSH_HELP = `usage: railway-axi ssh [flags] -- <command> [args...]
 Runs one read-only command in a service container and exits. Never opens an interactive shell.
 Only an allowlist runs: ${Object.keys(ALLOWED).join(", ")}.
 Refused before any railway call: anything else, shell operators (; && || | < > $ \` quotes globs), env/printenv, and paths that hold secrets (/proc/*/environ, .env, /run/secrets, credential files).
+File commands (ls cat head tail wc stat du, date -f/-r) read only absolute paths under ${READABLE_TREES.join(", ")}, plus /etc/os-release, /proc/{meminfo,loadavg,uptime,cpuinfo,version} and /proc/<pid>/{cmdline,status,stat,statm,limits}; relative paths and .. are refused.
 flags[4]:
   --lines <n>           stdout lines to print (default ${SSH_LINES_DEFAULT}, max ${SSH_LINES_MAX}); each line is cut at ${SSH_LINE_MAX} characters
   --service <name|id>   service to connect to; required when the environment has several and none is linked
   --project <name|id>   project to use (requires --environment); default: linked project
   --environment <name>  environment to use; default: linked environment
 examples:
-  railway-axi ssh --service web -- ls /proc
+  railway-axi ssh --service web -- ls -la /app
   railway-axi ssh --service web -- ps aux
   railway-axi ssh --service web --lines 20 -- tail -n 200 /app/log/app.log
   railway-axi ssh --project my-app --environment production --service web -- df -h

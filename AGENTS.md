@@ -65,7 +65,11 @@ AXI principles (the `axi` skill in the upstream `kunchenguid/axi` repo).
   side. `src/commands/ssh.ts` runs only its `ALLOWED` commands and validates
   the whole joined line (`SAFE_LINE` charset, `SENSITIVE` paths, per-command
   flag rules) before any railway call; widen the allowlist only for commands
-  that cannot print environment values or change state. Its railway call uses
+  that cannot print environment values or change state. File commands parse
+  their options from `OPTION_SPECS` (getopt-style, so a path hidden in an
+  option is found), and every path they read or list must be absolute and
+  under `READABLE_TREES`/`READABLE_FILES`; `SENSITIVE` is the second layer. A
+  new file command or path-reading option needs an `OPTION_SPECS` entry. Its railway call uses
   `railwayRun`, which returns non-zero exits as output (they belong to the
   remote command) with a timeout and stdin closed.
 - `src/scope.ts` `resolveScope` is the shared project-id + single-service

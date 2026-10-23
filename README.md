@@ -90,8 +90,13 @@ new deployment id and status.
 before any railway call: shell operators, quotes, globs and substitutions are
 refused (one command per call), as are `env`/`printenv` and paths that hold
 secrets such as `/proc/*/environ`, `.env` and `/run/secrets` (run
-`variables list` for names). For anything else the error points at plain
-`railway ssh`. stdout is capped at `--lines` (default 100) and each line at
+`variables list` for names). File commands (`ls`, `cat`, `head`, `tail`, `wc`,
+`stat`, `du`, and `date -f`/`-r`) only touch absolute paths under `/app`,
+`/var/log` and `/sys/fs/cgroup`, plus `/etc/os-release`, a few system-wide
+`/proc` files (`meminfo`, `loadavg`, `uptime`, `cpuinfo`, `version`) and
+`/proc/<pid>/{cmdline,status,stat,statm,limits}`. Relative paths are refused
+because the container's working directory is unknown (run `-- pwd` first), and
+so is any `..`. For anything else the error points at plain `railway ssh`. stdout is capped at `--lines` (default 100) and each line at
 300 characters.
 
 Set `AXI_DEBUG=1` to print each `railway` argv the axi forwards on stderr, one
