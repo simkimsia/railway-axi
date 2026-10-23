@@ -436,7 +436,10 @@ describe("ssh file commands read only allowlisted paths", () => {
     [["head", "-n5", "/etc/shadow"], "outside the paths"],
     [["head", "--lines=5", "/etc/shadow"], "outside the paths"],
     [["head", "--li", "5", "/app/a"], "in full or as --name=value"],
-    [["du", "-a", "--exclude-f", "/etc/os-release"], "in full or as --name=value"],
+    [
+      ["du", "-a", "--exclude-f", "/etc/os-release"],
+      "in full or as --name=value",
+    ],
     [["ls", "--hid", "/app"], "in full or as --name=value"],
     [["cat", "/app/a", "/etc/shadow"], "outside the paths"],
     [["cat", "--", "/etc/shadow"], "outside the paths"],

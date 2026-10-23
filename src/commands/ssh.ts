@@ -374,11 +374,7 @@ function parseOptions(
       const names = exact
         ? [given]
         : Object.keys(spec.long).filter((k) => k.startsWith(given));
-      if (
-        eq === -1 &&
-        !exact &&
-        names.some((n) => spec.long[n] !== "flag")
-      ) {
+      if (eq === -1 && !exact && names.some((n) => spec.long[n] !== "flag")) {
         throw refuse(
           `\`${name} ${word}\` is refused: write a long option that takes a value in full or as --name=value`,
           scope,
