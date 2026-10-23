@@ -234,9 +234,10 @@ interface OptionSpec {
  * Options of the commands that take paths (GNU coreutils and busybox), so a
  * value such as `head -n 50` is not mistaken for a path and a path hidden in
  * an option (`du --files0-from=F`, `date -f F`) is checked. A short option
- * not listed is taken as a flag; a long one not listed, or an abbreviation
- * that is not exact, never consumes the next word, which is then checked as
- * a path: an unknown option can only make the check stricter.
+ * not listed is taken as a flag; a long one not listed never consumes the
+ * next word, which is then checked as a path, and an abbreviation of one that
+ * takes a value must be written with `=`: an unknown option can only make the
+ * check stricter.
  */
 const OPTION_SPECS: Record<string, OptionSpec> = {
   cat: { short: {}, long: {} },
@@ -373,6 +374,17 @@ function parseOptions(
       const names = exact
         ? [given]
         : Object.keys(spec.long).filter((k) => k.startsWith(given));
+      if (
+        eq === -1 &&
+        !exact &&
+        names.some((n) => spec.long[n] !== "flag")
+      ) {
+        throw refuse(
+          `\`${name} ${word}\` is refused: write a long option that takes a value in full or as --name=value`,
+          scope,
+          [READABLE_HINT],
+        );
+      }
       for (const n of names) parsed.long.add(n);
       const isPath = names.some((n) => spec.long[n] === "path");
       if (eq !== -1) {
