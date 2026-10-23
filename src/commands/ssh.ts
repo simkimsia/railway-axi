@@ -207,15 +207,51 @@ export function parseSshCommand(tokens: string[], scope: Scope): SshCommand {
     ? OPTION_SPECS[name]
     : undefined;
   if (spec !== undefined) {
+    checkObsoleteCounts(name, rest, scope);
     const parsed = parseOptions(name, rest, spec, scope);
     for (const path of parsed.paths) checkPath(path, scope);
     if (PATH_OPERANDS.has(name)) {
-      for (const operand of parsed.operands) checkPath(operand, scope);
+      for (const [i, operand] of parsed.operands.entries()) {
+        if (i === 0 && isTailFromLine(name, rest)) continue;
+        checkPath(operand, scope);
+      }
     }
     checkParsed(name, parsed, scope);
   }
   checkCommandFlags(name, rest, scope);
   return { name, words };
+}
+
+/**
+ * GNU head and tail also accept the obsolete count syntax `-<digits><letters>`
+ * (`head -5c F`: five bytes of F) and, for tail, `-[bcl]<letters>` (`tail -cf
+ * F`: follow). There the count is part of the word and the NEXT word is a
+ * file, while getopt-style parsing would take `c` as an option whose value is
+ * that next word, so the file would escape the path check. Such words are
+ * refused; `-n N`, `-c N` and a bare `-<digits>` (`-50`) still work.
+ */
+function checkObsoleteCounts(name: string, rest: string[], scope: Scope): void {
+  if (name !== "head" && name !== "tail") return;
+  const obsolete = rest.find(
+    (w) =>
+      /^-\d+[A-Za-z]/.test(w) || (name === "tail" && /^-[bcl][^0-9]/.test(w)),
+  );
+  if (obsolete !== undefined) {
+    throw refuse(
+      `\`${name} ${obsolete}\` is refused: write the count as \`-n N\` or \`-c N\` with a space`,
+      scope,
+      [`Use \`${name} -n 100 <file>\` or \`${name} -c 100 <file>\``],
+    );
+  }
+}
+
+/**
+ * `tail +N FILE` (from line N): GNU tail reads `+N` as the count only when it
+ * is the first word and one file follows, so only that shape skips the path
+ * check for `+N`; anywhere else `+N` is a file name and is checked.
+ */
+function isTailFromLine(name: string, rest: string[]): boolean {
+  return name === "tail" && rest.length === 2 && /^\+\d+$/.test(rest[0]);
 }
 
 /**
@@ -291,6 +327,7 @@ const OPTION_SPECS: Record<string, OptionSpec> = {
       sort: "value",
       time: "value",
       color: "optional",
+      hyperlink: "optional",
       "indicator-style": "value",
       "quoting-style": "value",
     },
