@@ -60,6 +60,15 @@ AXI principles (the `axi` skill in the upstream `kunchenguid/axi` repo).
   or only `{"success": true}` with `--from-source`, so `src/commands/redeploy.ts`
   looks the id up in `deployment list` best effort and never fails after the
   redeploy itself succeeded.
+- `railway ssh [scope] -- <cmd>` hands the words to a shell on the remote
+  side. `src/commands/ssh.ts` runs only its `ALLOWED` commands and validates
+  the whole joined line (`SAFE_LINE` charset, `SENSITIVE` paths, per-command
+  flag rules) before any railway call; widen the allowlist only for commands
+  that cannot print environment values or change state. Its railway call uses
+  `railwayRun`, which returns non-zero exits as output (they belong to the
+  remote command) with a timeout and stdin closed.
+- `src/scope.ts` `resolveScope` is the shared project-id + single-service
+  resolution for commands whose railway subcommand takes a project id only.
 - The SDK ships `update` as a reserved built-in, so `railway-axi update` works
   with no code here; the npm package name resolves from `package.json`.
 

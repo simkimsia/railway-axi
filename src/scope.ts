@@ -121,3 +121,28 @@ export function assertServiceUnambiguous(
     ],
   );
 }
+
+/**
+ * For commands that act on one service through a railway subcommand that
+ * takes a project id only (`variable`, `redeploy`, `ssh`) and fails without a
+ * linked service. A project name becomes its id, and a missing --service is
+ * either the one unambiguous service or a refusal that lists the names
+ * (AXI §6). `command` names the railway-axi command for that refusal's hint.
+ */
+export async function resolveScope(
+  scope: Scope,
+  command: string,
+): Promise<Scope> {
+  const withId: Scope = scope.project
+    ? { ...scope, project: await resolveProjectId(scope.project) }
+    : scope;
+  if (withId.service) return withId;
+  return {
+    ...withId,
+    service: assertServiceUnambiguous(
+      withId,
+      await fetchServices(withId),
+      command,
+    ),
+  };
+}

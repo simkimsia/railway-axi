@@ -1,9 +1,8 @@
 import { assertNoArgs, takeBoolFlag } from "../args.js";
 import { AxiError } from "../errors.js";
-import { railwayJson, resolveProjectId } from "../railway.js";
+import { railwayJson } from "../railway.js";
 import {
-  assertServiceUnambiguous,
-  fetchServices,
+  resolveScope,
   scopeArgs,
   scopeHint,
   takeScope,
@@ -32,26 +31,6 @@ interface RedeployResult {
   success?: boolean;
 }
 
-/**
- * `railway redeploy` takes a project id only and, without a linked service,
- * fails. Resolve both up front so a name works and several services are
- * refused by name rather than guessed (AXI §6): this command changes state.
- */
-async function resolveScope(scope: Scope): Promise<Scope> {
-  const withId: Scope = scope.project
-    ? { ...scope, project: await resolveProjectId(scope.project) }
-    : scope;
-  if (withId.service) return withId;
-  return {
-    ...withId,
-    service: assertServiceUnambiguous(
-      withId,
-      await fetchServices(withId),
-      "redeploy",
-    ),
-  };
-}
-
 /** Add a next step to the two refusals railway prints before redeploying. */
 function explainRefusal(error: unknown, scope: Scope): unknown {
   if (!(error instanceof AxiError)) return error;
@@ -75,7 +54,7 @@ export async function redeployCommand(args: string[]): Promise<string> {
   const fromSource = takeBoolFlag(args, "--from-source");
   assertNoArgs("redeploy", args);
 
-  const resolved = await resolveScope(scope);
+  const resolved = await resolveScope(scope, "redeploy");
   let result: RedeployResult;
   try {
     // --yes: the raw CLI otherwise prompts, and refuses outright without a TTY.

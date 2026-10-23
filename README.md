@@ -51,6 +51,7 @@ railway-axi variables list [--service <name>]                     # variable nam
 railway-axi variables get <NAME> [--service <name>]               # one value
 railway-axi variables set <NAME=value>... [--skip-deploys]        # set; redeploys unless --skip-deploys
 railway-axi redeploy     [--service <name>] [--from-source]        # redeploy latest deployment, or deploy latest source
+railway-axi ssh          [--service <name>] [--lines 100] -- <cmd>  # one allowlisted read-only command in the container
 railway-axi --help
 railway-axi --version  # fast path, never loads the command graph
 railway-axi update     # self-update (built into axi-sdk-js)
@@ -68,11 +69,11 @@ help[2]:
   Run `railway-axi status` to see the linked project
 ```
 
-`services`, `deployments`, `logs`, `variables` and `redeploy` default to the project linked
+`services`, `deployments`, `logs`, `variables`, `redeploy` and `ssh` default to the project linked
 to the current directory (or a parent). Pass `--project <name|id> --environment <env>`
 to target any project without linking. `logs` always fetches a bounded page and
 exits; it never streams, so an agent can never hang on it. When an environment
-has several services and none is linked, `deployments`, `logs`, `variables` and `redeploy`
+has several services and none is linked, `deployments`, `logs`, `variables`, `redeploy` and `ssh`
 refuse and list the names instead of guessing.
 
 Variable values are secrets, so `variables list` prints names only, `get`
@@ -81,6 +82,17 @@ a redeploy was triggered without echoing any value. To apply several
 `--skip-deploys` sets at once, run `redeploy`: it redeploys the latest
 deployment as-is (or the latest source with `--from-source`) and prints the
 new deployment id and status.
+
+`ssh` runs one read-only command in a running service container and exits:
+`railway-axi ssh --service web -- ps aux`. Only an allowlist runs (`ls`, `cat`,
+`head`, `tail`, `wc`, `stat`, `du`, `df`, `ps`, `id`, `uname`, `uptime`,
+`free`, `date`, `pwd`, `whoami`, `hostname`), and the whole line is checked
+before any railway call: shell operators, quotes, globs and substitutions are
+refused (one command per call), as are `env`/`printenv` and paths that hold
+secrets such as `/proc/*/environ`, `.env` and `/run/secrets` (run
+`variables list` for names). For anything else the error points at plain
+`railway ssh`. stdout is capped at `--lines` (default 100) and each line at
+300 characters.
 
 Set `AXI_DEBUG=1` to print each `railway` argv the axi forwards on stderr, one
 line per call, ready to rerun against the plain CLI. Values passed to

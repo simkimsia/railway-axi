@@ -5,15 +5,9 @@ import {
   takePositional,
 } from "../args.js";
 import { AxiError, REPORT_SUGGESTION, UNKNOWN_SUGGESTION } from "../errors.js";
+import { railwayExec, railwayJson, redactText } from "../railway.js";
 import {
-  railwayExec,
-  railwayJson,
-  redactText,
-  resolveProjectId,
-} from "../railway.js";
-import {
-  assertServiceUnambiguous,
-  fetchServices,
+  resolveScope,
   scopeArgs,
   scopeHint,
   takeScope,
@@ -138,27 +132,6 @@ async function dispatch(args: string[], secrets: string[]): Promise<string> {
         ],
       );
   }
-}
-
-/**
- * `railway variable` takes a project id only, and errors when no service is
- * linked. Resolve both up front: a project name becomes its id, and a missing
- * --service is either the one unambiguous service or a refusal (AXI §6),
- * which matters most for `set`.
- */
-async function resolveScope(scope: Scope, command: string): Promise<Scope> {
-  const withId: Scope = scope.project
-    ? { ...scope, project: await resolveProjectId(scope.project) }
-    : scope;
-  if (withId.service) return withId;
-  return {
-    ...withId,
-    service: assertServiceUnambiguous(
-      withId,
-      await fetchServices(withId),
-      command,
-    ),
-  };
 }
 
 function takeVariablesScope(args: string[]): Scope {

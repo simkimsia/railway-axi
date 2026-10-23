@@ -11,6 +11,10 @@ export interface ExecResult {
   stdout: string;
   stderr: string;
   exitCode: number;
+  /** Killed for exceeding the stdout/stderr buffer. */
+  overflow?: boolean;
+  /** Killed for exceeding `timeoutMs`. */
+  timedOut?: boolean;
 }
 
 const MAX_BUFFER_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -32,30 +36,50 @@ export function debugLine(args: string[], redact: string[] = []): string {
   return `[axi-debug] railway ${shown.join(" ")}`;
 }
 
-function run(args: string[], redact: string[] = []): Promise<ExecResult> {
+interface RunOptions {
+  /** Kill railway after this many ms (execFile `timeout`). */
+  timeoutMs?: number;
+}
+
+function run(
+  args: string[],
+  redact: string[] = [],
+  opts: RunOptions = {},
+): Promise<ExecResult> {
   if (process.env.AXI_DEBUG === "1") {
     process.stderr.write(`${debugLine(args, redact)}\n`);
   }
   return new Promise((resolve) => {
-    execFile(
+    const child = execFile(
       "railway",
       args,
-      { maxBuffer: MAX_BUFFER_BYTES },
+      {
+        maxBuffer: MAX_BUFFER_BYTES,
+        ...(opts.timeoutMs ? { timeout: opts.timeoutMs } : {}),
+      },
       (error, stdout, stderr) => {
         if (error && (error as NodeJS.ErrnoException).code === "ENOENT") {
           resolve({ stdout: "", stderr: "ENOENT", exitCode: 127 });
           return;
         }
-        const exitCode = error
-          ? ((error as Error & { code?: string | number }).code ?? 1)
-          : 0;
+        const failure = error as
+          (Error & { code?: string | number; killed?: boolean }) | null;
+        const exitCode = failure ? (failure.code ?? 1) : 0;
         resolve({
           stdout: stdout ?? "",
           stderr: stderr ?? "",
           exitCode: typeof exitCode === "number" ? exitCode : 1,
+          ...(failure?.code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER"
+            ? { overflow: true }
+            : failure?.killed
+              ? { timedOut: true }
+              : {}),
         });
       },
     );
+    // No call reads stdin: close it so a remote command waiting on input
+    // (`railway ssh -- cat` with no file) sees EOF instead of hanging.
+    child?.stdin?.end();
   });
 }
 
@@ -217,4 +241,18 @@ export function pickProjectId(name: string, projects: ProjectRef[]): string {
       : "No projects found in this account",
     "Run `railway-axi list` for details",
   ]);
+}
+
+/**
+ * Execute railway and return the raw result even on a non-zero exit, for
+ * `ssh`, where the exit code and stderr belong to the remote command and are
+ * output, not a railway failure. Only a missing binary throws.
+ */
+export async function railwayRun(
+  args: string[],
+  opts: RunOptions = {},
+): Promise<ExecResult> {
+  const result = await run(args, [], opts);
+  if (result.stderr === "ENOENT") throw railwayNotInstalledError();
+  return result;
 }
