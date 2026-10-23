@@ -72,7 +72,7 @@ export async function deploymentsCommand(args: string[]): Promise<string> {
   return renderDeployments(deployments, resolved);
 }
 
-function originOf(d: RailwayDeployment): string {
+export function originOf(d: RailwayDeployment): string {
   const meta = d.meta ?? {};
   if (meta.image) return meta.image;
   if (meta.commitHash) {

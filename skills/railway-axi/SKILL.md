@@ -34,7 +34,7 @@ copies go stale. Get the current source of truth from the CLI:
 - `railway-axi --help` for global flags and the command index
 - `railway-axi <command> --help` for per-command usage
 
-Today's surface is mostly read-only: `list` (all projects in the account), `status` (project linked to cwd), `whoami`, `services` (per-service deploy status and URL), `deployments` (deploy history of one service), `logs` (a bounded page of deploy, build, or HTTP logs; never streams), `variables` (`list` names only, `get` one value, `set` which mutates and redeploys). The last four take `--project <name> --environment <env>` to target any project without linking.
+Today's surface is mostly read-only: `list` (all projects in the account), `status` (project linked to cwd), `whoami`, `services` (per-service deploy status and URL), `deployments` (deploy history of one service), `logs` (a bounded page of deploy, build, or HTTP logs; never streams), `variables` (`list` names only, `get` one value, `set` which mutates and redeploys), `redeploy` (redeploys one service, e.g. after `variables set --skip-deploys`; mutates). The last five take `--project <name> --environment <env>` to target any project without linking.
 
 ## When railway-axi cannot do it
 

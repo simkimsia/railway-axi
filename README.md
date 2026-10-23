@@ -9,8 +9,8 @@ reference implementation [`gh-axi`](https://github.com/kunchenguid/gh-axi).
 
 ## Status
 
-Early scaffold (v0). Read-only commands, plus `variables set` as the one
-mutating command.
+Early scaffold (v0). Read-only commands, plus two mutating ones:
+`variables set` and `redeploy`.
 
 ## Requirements
 
@@ -50,6 +50,7 @@ railway-axi logs         [deployment-id] [--lines 100] [--build|--http] [--filte
 railway-axi variables list [--service <name>]                     # variable names only, never values
 railway-axi variables get <NAME> [--service <name>]               # one value
 railway-axi variables set <NAME=value>... [--skip-deploys]        # set; redeploys unless --skip-deploys
+railway-axi redeploy     [--service <name>] [--from-source]        # redeploy latest deployment, or deploy latest source
 railway-axi --help
 railway-axi --version  # fast path, never loads the command graph
 railway-axi update     # self-update (built into axi-sdk-js)
@@ -67,16 +68,19 @@ help[2]:
   Run `railway-axi status` to see the linked project
 ```
 
-`services`, `deployments`, `logs` and `variables` default to the project linked
+`services`, `deployments`, `logs`, `variables` and `redeploy` default to the project linked
 to the current directory (or a parent). Pass `--project <name|id> --environment <env>`
 to target any project without linking. `logs` always fetches a bounded page and
 exits; it never streams, so an agent can never hang on it. When an environment
-has several services and none is linked, `deployments`, `logs` and `variables`
+has several services and none is linked, `deployments`, `logs`, `variables` and `redeploy`
 refuse and list the names instead of guessing.
 
 Variable values are secrets, so `variables list` prints names only, `get`
 prints the one value asked for, and `set` reports the names it set and whether
-a redeploy was triggered without echoing any value.
+a redeploy was triggered without echoing any value. To apply several
+`--skip-deploys` sets at once, run `redeploy`: it redeploys the latest
+deployment as-is (or the latest source with `--from-source`) and prints the
+new deployment id and status.
 
 Set `AXI_DEBUG=1` to print each `railway` argv the axi forwards on stderr, one
 line per call, ready to rerun against the plain CLI. Values passed to

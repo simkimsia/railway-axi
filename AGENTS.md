@@ -48,13 +48,18 @@ AXI principles (the `axi` skill in the upstream `kunchenguid/axi` repo).
   `--environment`. See the comments in `src/scope.ts`.
 - `railway variable list --json` is a flat `{NAME: value}` object of raw
   secrets, and `variable` takes a project id only. `src/commands/variables.ts`
-  is the one mutating command; no code path there may print a value other
+  handles secret values; no code path there may print a value other
   than the single one `get` was asked for (errors included). Its railway calls
   pass `secret`/`redact` (`SecretOptions` in `src/railway.ts`), and
   `test/variables-leak.test.ts` fakes the binary to prove it. Errors are
   masked through `secretCandidates`, an allowlist: a new flag or subcommand
   must be added to it (`KNOWN_FLAGS`/`SUBCOMMANDS`) and to the sweep's
   `BASES`, and a new railway failure mode gets a row in the cases table.
+- `railway redeploy` takes a project id only and prompts unless `--yes`
+  (refusing outright without a TTY). `--json` prints `{"id": <new deployment>}`,
+  or only `{"success": true}` with `--from-source`, so `src/commands/redeploy.ts`
+  looks the id up in `deployment list` best effort and never fails after the
+  redeploy itself succeeded.
 - The SDK ships `update` as a reserved built-in, so `railway-axi update` works
   with no code here; the npm package name resolves from `package.json`.
 

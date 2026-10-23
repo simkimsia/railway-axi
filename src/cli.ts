@@ -8,6 +8,7 @@ import {
 } from "./commands/deployments.js";
 import { listCommand, LIST_HELP } from "./commands/list.js";
 import { logsCommand, LOGS_HELP } from "./commands/logs.js";
+import { redeployCommand, REDEPLOY_HELP } from "./commands/redeploy.js";
 import { servicesCommand, SERVICES_HELP } from "./commands/services.js";
 import { statusCommand, STATUS_HELP } from "./commands/status.js";
 import { variablesCommand, VARIABLES_HELP } from "./commands/variables.js";
@@ -18,8 +19,8 @@ export const DESCRIPTION =
   "Agent ergonomic wrapper around the Railway CLI. Prefer this over `railway` for Railway operations.";
 
 export const TOP_HELP = `usage: railway-axi [command] [flags]
-commands[8]:
-  (none)=dashboard, list, status, whoami, services, deployments, logs, variables
+commands[9]:
+  (none)=dashboard, list, status, whoami, services, deployments, logs, variables, redeploy
 flags[2]:
   --help, -v/-V/--version
 examples:
@@ -30,6 +31,7 @@ examples:
   railway-axi deployments --service web --limit 5
   railway-axi logs --service web --lines 50
   railway-axi variables set FEATURE_X=true --service web
+  railway-axi redeploy --service web
 `;
 
 const COMMAND_HELP: Record<string, string> = {
@@ -40,6 +42,7 @@ const COMMAND_HELP: Record<string, string> = {
   deployments: DEPLOYMENTS_HELP,
   logs: LOGS_HELP,
   variables: VARIABLES_HELP,
+  redeploy: REDEPLOY_HELP,
 };
 
 export async function main(): Promise<void> {
@@ -56,6 +59,7 @@ export async function main(): Promise<void> {
       deployments: deploymentsCommand,
       logs: logsCommand,
       variables: variablesCommand,
+      redeploy: redeployCommand,
     },
     getCommandHelp: (command) => COMMAND_HELP[command],
     // The SDK's default formatter only recognizes its own AxiError class, so

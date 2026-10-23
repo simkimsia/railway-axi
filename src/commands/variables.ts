@@ -353,7 +353,7 @@ export function renderSet(
       skipDeploys
         ? [
             "The new values take effect on the next deploy of the service",
-            "Run `railway-axi variables set <NAME=value>` without --skip-deploys on the last one to redeploy",
+            `Run \`railway-axi redeploy${scope.service ? ` --service ${scope.service}` : ""}\` to apply them now`,
           ]
         : ["Run `railway-axi deployments` to watch the redeploy"],
     ),
