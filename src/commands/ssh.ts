@@ -69,7 +69,7 @@ const SAFE_LINE = /^[A-Za-z0-9_./:=,@%+\- \t]*$/;
 const SENSITIVE: RegExp[] = [
   /environ/i,
   /(^|[/=])\.env($|[./])/i,
-  /\/run\/secrets/i,
+  /(^|[/=])secrets($|\/)/i,
   /(^|[/=])\.ssh($|\/)/i,
   /(^|[/=])\.(netrc|pgpass|npmrc|git-credentials|aws|docker|kube)($|\/)/i,
   /(^|\/)id_(rsa|dsa|ecdsa|ed25519)/i,

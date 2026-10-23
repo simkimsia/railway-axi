@@ -244,6 +244,8 @@ describe("ssh refusals happen before any railway call", () => {
     ["cat", "/run/x/../secrets/x"],
     ["du", "--files0-from=/run/x/../secrets/x"],
     ["cat", "/var/run/secrets/kubernetes.io/serviceaccount/token"],
+    ["cat", "run/secrets/x"],
+    ["cat", "secrets/x"],
     ["cat", "/root/.ssh/id_rsa"],
     ["cat", "/home/app/.netrc"],
     ["cat", "/root/.pgpass"],
