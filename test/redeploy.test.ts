@@ -174,6 +174,31 @@ describe("redeploy", () => {
     });
   });
 
+  it("keeps the project and environment in every refusal hint", async () => {
+    resolveProject.mockResolvedValueOnce(PROJECT_ID);
+    json.mockRejectedValueOnce(
+      mapRailwayError(
+        "The latest deployment for service web cannot be redeployed. This may be because it's currently building, deploying, or was removed.",
+        1,
+      ),
+    );
+    await expect(
+      redeployCommand([
+        "--project",
+        "my-app",
+        "--environment",
+        "staging",
+        "--service",
+        "web",
+      ]),
+    ).rejects.toMatchObject({
+      suggestions: [
+        `Run \`railway-axi deployments --service web --project ${PROJECT_ID} --environment staging --limit 1\` to see its status, and retry once it has finished`,
+        `Or run \`railway-axi redeploy --service web --project ${PROJECT_ID} --environment staging --from-source\` to deploy from the source instead`,
+      ],
+    });
+  });
+
   it("points a never-deployed service at --from-source", async () => {
     json.mockRejectedValueOnce(
       mapRailwayError("No deployment found for service", 1),
@@ -188,6 +213,17 @@ describe("redeploy", () => {
 });
 
 describe("renderRedeploy", () => {
+  it("scopes the build-logs hint to the redeployed target", () => {
+    const out = renderRedeploy(
+      { id: NEW_ID },
+      { service: "web", project: PROJECT_ID, environment: "staging" },
+      false,
+    );
+    expect(out).toContain(
+      `railway-axi logs --build ${NEW_ID} --service web --project ${PROJECT_ID} --environment staging`,
+    );
+  });
+
   it("falls back to triggered with no deployment row", () => {
     const out = renderRedeploy({ id: NEW_ID }, { service: "web" }, false);
     expect(out).toContain("status: triggered");

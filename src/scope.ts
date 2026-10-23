@@ -45,6 +45,14 @@ export function scopeArgs(scope: Scope): string[] {
   return out;
 }
 
+/** The scope as flags for a next-step hint, so a copied command hits the same target. */
+export function scopeHint(scope: Scope): string {
+  const service = scope.service ? ` --service ${scope.service}` : "";
+  const project = scope.project ? ` --project ${scope.project}` : "";
+  const env = scope.environment ? ` --environment ${scope.environment}` : "";
+  return `${service}${project}${env}`;
+}
+
 export interface RailwayService {
   id: string;
   name: string;

@@ -142,6 +142,9 @@ describe("variables set", () => {
     expect(out).toContain("service: web");
     expect(out).toContain("environment: production");
     expect(out).toContain("redeploy: triggered");
+    expect(out).toContain(
+      "railway-axi deployments --service web --environment production",
+    );
     expect(out).not.toContain("x.test");
   });
 
@@ -158,6 +161,22 @@ describe("variables set", () => {
       { secret: true, redact: ["A=1", "1"] },
     );
     expect(out).toContain("redeploy: skipped");
+  });
+
+  it("points --skip-deploys at a redeploy of the same environment", async () => {
+    exec.mockResolvedValue("");
+    const out = await variablesCommand([
+      "set",
+      "A=1",
+      "--environment",
+      "staging",
+      "--service",
+      "web",
+      "--skip-deploys",
+    ]);
+    expect(out).toContain(
+      "Run `railway-axi redeploy --service web --environment staging` to apply them now",
+    );
   });
 
   it("refuses to guess the service when the environment has several", async () => {

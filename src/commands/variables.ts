@@ -15,6 +15,7 @@ import {
   assertServiceUnambiguous,
   fetchServices,
   scopeArgs,
+  scopeHint,
   takeScope,
   type Scope,
 } from "../scope.js";
@@ -353,9 +354,9 @@ export function renderSet(
       skipDeploys
         ? [
             "The new values take effect on the next deploy of the service",
-            `Run \`railway-axi redeploy${scope.service ? ` --service ${scope.service}` : ""}\` to apply them now`,
+            `Run \`railway-axi redeploy${scopeHint(scope)}\` to apply them now`,
           ]
-        : ["Run `railway-axi deployments` to watch the redeploy"],
+        : [`Run \`railway-axi deployments${scopeHint(scope)}\` to watch the redeploy`],
     ),
   ]);
 }

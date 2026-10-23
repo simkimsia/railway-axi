@@ -5,6 +5,7 @@ import {
   assertServiceUnambiguous,
   fetchServices,
   scopeArgs,
+  scopeHint,
   takeScope,
   type Scope,
 } from "../scope.js";
@@ -54,16 +55,16 @@ async function resolveScope(scope: Scope): Promise<Scope> {
 /** Add a next step to the two refusals railway prints before redeploying. */
 function explainRefusal(error: unknown, scope: Scope): unknown {
   if (!(error instanceof AxiError)) return error;
-  const service = scope.service ? ` --service ${scope.service}` : "";
+  const target = scopeHint(scope);
   if (/cannot be redeployed/i.test(error.message)) {
     return new AxiError(error.message, error.code, [
-      `Run \`railway-axi deployments${service} --limit 1\` to see its status, and retry once it has finished`,
-      `Or run \`railway-axi redeploy${service} --from-source\` to deploy from the source instead`,
+      `Run \`railway-axi deployments${target} --limit 1\` to see its status, and retry once it has finished`,
+      `Or run \`railway-axi redeploy${target} --from-source\` to deploy from the source instead`,
     ]);
   }
   if (/no deployment found/i.test(error.message)) {
     return new AxiError(error.message, "NOT_FOUND", [
-      `The service has never deployed; run \`railway-axi redeploy${service} --from-source\` to deploy its source`,
+      `The service has never deployed; run \`railway-axi redeploy${target} --from-source\` to deploy its source`,
     ]);
   }
   return error;
@@ -124,10 +125,7 @@ export function renderRedeploy(
   fromSource: boolean,
   deployment?: RailwayDeployment,
 ): string {
-  const service = scope.service ? ` --service ${scope.service}` : "";
-  const env = scope.environment ? ` --environment ${scope.environment}` : "";
-  const project = scope.project ? ` --project ${scope.project}` : "";
-  const target = `${service}${project}${env}`;
+  const target = scopeHint(scope);
   const body = {
     redeploy: {
       ...(scope.service ? { service: scope.service } : {}),
@@ -141,8 +139,8 @@ export function renderRedeploy(
   const help = [
     `Run \`railway-axi deployments${target} --limit 1\` to watch its status`,
     result.id
-      ? `Run \`railway-axi logs --build ${result.id}\` for its build logs`
-      : `Run \`railway-axi logs --build <deployment-id>\` for its build logs`,
+      ? `Run \`railway-axi logs --build ${result.id}${target}\` for its build logs`
+      : `Run \`railway-axi logs --build <deployment-id>${target}\` for its build logs`,
   ];
   return renderOutput([encode(body), renderHelp(help)]);
 }
