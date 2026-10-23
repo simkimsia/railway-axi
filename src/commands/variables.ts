@@ -356,7 +356,9 @@ export function renderSet(
             "The new values take effect on the next deploy of the service",
             `Run \`railway-axi redeploy${scopeHint(scope)}\` to apply them now`,
           ]
-        : [`Run \`railway-axi deployments${scopeHint(scope)}\` to watch the redeploy`],
+        : [
+            `Run \`railway-axi deployments${scopeHint(scope)}\` to watch the redeploy`,
+          ],
     ),
   ]);
 }
