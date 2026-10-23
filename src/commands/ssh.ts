@@ -1,3 +1,4 @@
+import { posix } from "node:path";
 import { assertNoArgs, takeIntFlag } from "../args.js";
 import { AxiError, mapRailwayError } from "../errors.js";
 import { railwayRun, type ExecResult } from "../railway.js";
@@ -74,6 +75,17 @@ const SENSITIVE: RegExp[] = [
   /(^|\/)id_(rsa|dsa|ecdsa|ed25519)/i,
 ];
 
+/**
+ * The word as typed plus the normalized forms the remote kernel resolves it
+ * to (`/run//secrets`, `/run/./secrets`, `/run/x/../secrets`), for the word
+ * and for a flag value after `=`.
+ */
+function pathSpellings(word: string): string[] {
+  const eq = word.indexOf("=");
+  const parts = eq === -1 ? [word] : [word, word.slice(eq + 1)];
+  return [word, ...parts.map((p) => posix.normalize(p).replace(/\/+/g, "/"))];
+}
+
 export interface SshCommand {
   name: string;
   words: string[];
@@ -139,7 +151,7 @@ export function parseSshCommand(tokens: string[], scope: Scope): SshCommand {
     }
   }
   for (const word of rest) {
-    if (SENSITIVE.some((re) => re.test(word))) {
+    if (pathSpellings(word).some((p) => SENSITIVE.some((re) => re.test(p)))) {
       throw refuse(
         `${word} is refused: it can hold secret values (process environments, dotenv files, credentials)`,
         scope,
