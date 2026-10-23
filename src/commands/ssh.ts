@@ -462,7 +462,7 @@ function checkParsed(name: string, parsed: ParsedOptions, scope: Scope): void {
   if (
     (name === "ls" || name === "du") &&
     parsed.operands.length === 0 &&
-    parsed.paths.length === 0
+    !(name === "du" && parsed.long.has("files0-from"))
   ) {
     throw refuse(
       `\`${name}\` needs a directory: the remote working directory is unknown`,
