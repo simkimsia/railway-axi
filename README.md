@@ -96,7 +96,8 @@ secrets such as `/proc/*/environ`, `.env` and `/run/secrets` (run
 `/proc` files (`meminfo`, `loadavg`, `uptime`, `cpuinfo`, `version`) and
 `/proc/<pid>/{cmdline,status,stat,statm,limits}`. Relative paths are refused
 because the container's working directory is unknown (run `-- pwd` first), and
-so is any `..`. For anything else the error points at plain `railway ssh`. stdout is capped at `--lines` (default 100) and each line at
+so is any `..`. The `du` and `wc` option `--files0-from` is refused because
+the filenames inside its list cannot be checked; name paths directly instead. For anything else the error points at plain `railway ssh`. stdout is capped at `--lines` (default 100) and each line at
 300 characters.
 
 Set `AXI_DEBUG=1` to print each `railway` argv the axi forwards on stderr, one

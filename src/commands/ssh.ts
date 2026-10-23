@@ -209,11 +209,11 @@ export function parseSshCommand(tokens: string[], scope: Scope): SshCommand {
   if (spec !== undefined) {
     checkObsoleteCounts(name, rest, scope);
     const parsed = parseOptions(name, rest, spec, scope);
-    for (const path of parsed.paths) checkPath(path, scope);
+    for (const { path, stdin } of parsed.paths) checkPath(path, scope, stdin);
     if (PATH_OPERANDS.has(name)) {
       for (const [i, operand] of parsed.operands.entries()) {
         if (i === 0 && isTailFromLine(name, rest)) continue;
-        checkPath(operand, scope);
+        checkPath(operand, scope, ["cat", "head", "tail", "wc"].includes(name));
       }
     }
     checkParsed(name, parsed, scope);
@@ -275,7 +275,7 @@ interface OptionSpec {
 /**
  * Options of the commands that take paths (GNU coreutils and busybox), so a
  * value such as `head -n 50` is not mistaken for a path and a path hidden in
- * an option (`du --files0-from=F`, `date -f F`) is checked. A short option
+ * an option (`date -f F`) is checked. A short option
  * not listed is taken as a flag; a long one not listed never consumes the
  * next word, which is then checked as a path, and an abbreviation of one that
  * takes a value must be written with `=`: an unknown option can only make the
@@ -379,7 +379,7 @@ interface ParsedOptions {
   /** Long option names seen; an abbreviation adds every name it could mean. */
   long: Set<string>;
   /** Values of options that read a file. */
-  paths: string[];
+  paths: { path: string; stdin: boolean }[];
   operands: string[];
 }
 
@@ -417,6 +417,13 @@ function parseOptions(
       const names = exact
         ? [given]
         : Object.keys(spec.long).filter((k) => k.startsWith(given));
+      if ((name === "du" || name === "wc") && names.includes("files0-from")) {
+        throw refuse(
+          `\`${name} ${word}\` is refused: the names inside the list file cannot be checked`,
+          scope,
+          ["Name paths directly instead", READABLE_HINT],
+        );
+      }
       if (eq === -1 && !exact && names.some((n) => spec.long[n] !== "flag")) {
         throw refuse(
           `\`${name} ${word}\` is refused: write a long option that takes a value in full or as --name=value`,
@@ -428,9 +435,19 @@ function parseOptions(
       const isPath = names.some((n) => spec.long[n] === "path");
       if (eq !== -1) {
         // A value for an option we do not know is checked as a path too.
-        if (isPath || names.length === 0) parsed.paths.push(word.slice(eq + 1));
+        if (isPath || names.length === 0) {
+          parsed.paths.push({
+            path: word.slice(eq + 1),
+            stdin: name === "date" && names.length === 1 && names[0] === "file",
+          });
+        }
       } else if (exact && spec.long[given] === "path") {
-        if (i + 1 < rest.length) parsed.paths.push(rest[++i]);
+        if (i + 1 < rest.length) {
+          parsed.paths.push({
+            path: rest[++i],
+            stdin: name === "date" && given === "file",
+          });
+        }
       } else if (exact && spec.long[given] === "value") {
         i++;
       }
@@ -458,7 +475,9 @@ function parseOptions(
           : i + 1 < rest.length
             ? rest[++i]
             : undefined;
-      if (kind === "path" && value !== undefined) parsed.paths.push(value);
+      if (kind === "path" && value !== undefined) {
+        parsed.paths.push({ path: value, stdin: name === "date" && letter === "f" });
+      }
       break;
     }
   }
@@ -470,10 +489,10 @@ function parseOptions(
  * working directory is unknown (`/` when an image sets no WORKDIR), so a
  * relative path could name any file and is refused; so is any `..`, which the
  * kernel resolves after symlinks and so can leave a readable tree even when
- * the spelling stays inside it. `-` is stdin, which is closed.
+ * the spelling stays inside it.
  */
-function checkPath(path: string, scope: Scope): void {
-  if (path === "-") return;
+function checkPath(path: string, scope: Scope, stdin: boolean): void {
+  if (path === "-" && stdin) return;
   if (path.split("/").includes("..")) {
     throw refuse(
       `${path} is refused: \`..\` can climb out of a readable directory`,
@@ -512,8 +531,7 @@ function checkPath(path: string, scope: Scope): void {
 function checkParsed(name: string, parsed: ParsedOptions, scope: Scope): void {
   if (
     (name === "ls" || name === "du") &&
-    parsed.operands.length === 0 &&
-    !(name === "du" && parsed.long.has("files0-from"))
+    parsed.operands.length === 0
   ) {
     throw refuse(
       `\`${name}\` needs a directory: the remote working directory is unknown`,
