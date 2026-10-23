@@ -30,7 +30,8 @@ AXI principles (the `axi` skill in the upstream `kunchenguid/axi` repo).
 - `src/scope.ts` — the shared `--project`/`--environment`/`--service` flags
   (`takeScope`, `scopeArgs`) and service resolution for `deployments` and
   `logs` (`fetchServices`, `assertServiceUnambiguous`): refuse and list names
-  rather than guess when several services could match.
+  rather than guess when several services could match. `scopeHint` renders
+  the scope for printed next-step commands, shell-quoted so a copy still runs.
 - Commands live in `src/commands/`, return TOON strings via `src/toon.ts`
   helpers; errors render through the `formatError` hook in `src/cli.ts`
   because the SDK's default formatter only recognizes its own AxiError class.

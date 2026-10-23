@@ -1,8 +1,10 @@
+import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import { AxiError } from "../src/errors.js";
 import {
   assertServiceUnambiguous,
   scopeArgs,
+  scopeHint,
   takeScope,
   type RailwayService,
 } from "../src/scope.js";
@@ -111,5 +113,49 @@ describe("assertServiceUnambiguous", () => {
         "railway-axi deployments --service",
       );
     }
+  });
+});
+
+/** Split a hint the way a POSIX shell would, so the test proves it copies. */
+function shellWords(hint: string): string[] {
+  const out = execFileSync("sh", ["-c", `printf '%s\\0' ${hint}`], {
+    encoding: "utf8",
+  });
+  return out.split("\0").slice(0, -1);
+}
+
+describe("scopeHint", () => {
+  it("prints plain values bare, in service, project, environment order", () => {
+    expect(
+      scopeHint({ project: "p", environment: "production", service: "web" }),
+    ).toBe(" --service web --project p --environment production");
+    expect(scopeHint({})).toBe("");
+  });
+
+  it("single-quotes values with spaces or shell metacharacters", () => {
+    expect(scopeHint({ service: "my web" })).toBe(" --service 'my web'");
+    expect(scopeHint({ service: "a;b" })).toBe(" --service 'a;b'");
+    expect(scopeHint({ environment: "$HOME" })).toBe(" --environment '$HOME'");
+    expect(scopeHint({ service: "O'Brien" })).toBe(` --service 'O'\\''Brien'`);
+  });
+
+  it("uses --flag=value for a value that starts with a dash", () => {
+    expect(scopeHint({ service: "-web" })).toBe(" --service=-web");
+    expect(scopeHint({ service: "-my web" })).toBe(" --service='-my web'");
+  });
+
+  it.each([
+    { service: "web" },
+    { service: "my web", environment: "staging" },
+    { service: "it's a `web` $(app) & co", environment: "-e x" },
+    { project: "my app", environment: "pr #12", service: "-s;rm" },
+  ])("round-trips through a real shell into takeScope: %o", (scope) => {
+    const args = shellWords(scopeHint(scope));
+    expect(takeScope(args)).toEqual({
+      project: scope.project,
+      environment: scope.environment,
+      service: scope.service,
+    });
+    expect(args).toEqual([]);
   });
 });

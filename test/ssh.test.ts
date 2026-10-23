@@ -8,6 +8,7 @@ import { execFile } from "node:child_process";
 import {
   ALLOWED,
   parseSshCommand,
+  renderSsh,
   sshCommand,
   SSH_LINES_DEFAULT,
 } from "../src/commands/ssh.js";
@@ -341,5 +342,30 @@ describe("ssh refusals happen before any railway call", () => {
     const error = await refusal(["--service", "web", "--session", "--", "pwd"]);
     expect(error.message).toContain("unknown flag --session");
     expect(calls).toEqual([]);
+  });
+});
+
+describe("ssh hints quote the scope", () => {
+  it("quotes a spaced service in the plain-railway refusal hint", () => {
+    try {
+      parseSshCommand(["rm", "x"], { service: "my web" });
+      expect.unreachable("should have refused");
+    } catch (error) {
+      expect((error as AxiError).suggestions).toContain(
+        "Run plain `railway ssh --service 'my web' -- <cmd>` yourself for anything else",
+      );
+    }
+  });
+
+  it("quotes the scope in the non-zero exit hint", () => {
+    const out = renderSsh(
+      { stdout: "", stderr: "ls: /nope: No such file", exitCode: 2 },
+      { name: "ls", words: ["ls", "/nope"] },
+      { service: "my web", environment: "-e" },
+      SSH_LINES_DEFAULT,
+    );
+    expect(out).toContain(
+      "railway-axi ssh --service 'my web' --environment=-e -- ls <dir>",
+    );
   });
 });

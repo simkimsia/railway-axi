@@ -6,7 +6,7 @@ vi.mock("../src/railway.js", async (importOriginal) => ({
   railwayExec: vi.fn(),
 }));
 
-import { variablesCommand } from "../src/commands/variables.js";
+import { renderSet, variablesCommand } from "../src/commands/variables.js";
 import { railwayExec, railwayJson } from "../src/railway.js";
 
 const json = vi.mocked(railwayJson);
@@ -229,5 +229,18 @@ describe("variables", () => {
       variablesCommand(["list", "--kv", "--service", "web"]),
     ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
     expect(json).not.toHaveBeenCalled();
+  });
+});
+
+describe("variables set hints quote the scope", () => {
+  it("quotes a spaced service in the redeploy and deployments hints", () => {
+    expect(
+      renderSet(["A"], { service: "my web", environment: "staging" }, true),
+    ).toContain(
+      "Run `railway-axi redeploy --service 'my web' --environment staging` to apply them now",
+    );
+    expect(renderSet(["A"], { service: "-web" }, false)).toContain(
+      "Run `railway-axi deployments --service=-web` to watch the redeploy",
+    );
   });
 });

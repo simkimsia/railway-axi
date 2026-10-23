@@ -1,6 +1,6 @@
 import { takeFlag } from "./args.js";
 import { AxiError } from "./errors.js";
-import { railwayJson, resolveProjectId } from "./railway.js";
+import { railwayJson, resolveProjectId, shellQuote } from "./railway.js";
 
 /**
  * The three flags every read command shares. All optional: when absent,
@@ -45,12 +45,24 @@ export function scopeArgs(scope: Scope): string[] {
   return out;
 }
 
+/**
+ * One flag for a copy-pasteable hint. The value is shell-quoted, and a
+ * dash-leading value uses `--flag=value` because takeFlag (and railway's
+ * clap parser) refuse it in the space form.
+ */
+function hintFlag(flag: string, value: string | undefined): string {
+  if (!value) return "";
+  const quoted = shellQuote(value);
+  return value.startsWith("-") ? ` ${flag}=${quoted}` : ` ${flag} ${quoted}`;
+}
+
 /** The scope as flags for a next-step hint, so a copied command hits the same target. */
 export function scopeHint(scope: Scope): string {
-  const service = scope.service ? ` --service ${scope.service}` : "";
-  const project = scope.project ? ` --project ${scope.project}` : "";
-  const env = scope.environment ? ` --environment ${scope.environment}` : "";
-  return `${service}${project}${env}`;
+  return (
+    hintFlag("--service", scope.service) +
+    hintFlag("--project", scope.project) +
+    hintFlag("--environment", scope.environment)
+  );
 }
 
 export interface RailwayService {

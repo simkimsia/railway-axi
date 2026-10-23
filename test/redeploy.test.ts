@@ -230,3 +230,32 @@ describe("renderRedeploy", () => {
     expect(out).not.toContain("origin:");
   });
 });
+
+describe("redeploy hints quote the scope", () => {
+  it("quotes a service name with a space in every next step", () => {
+    const out = renderRedeploy(
+      { id: NEW_ID },
+      { service: "my web", environment: "-staging" },
+      false,
+    );
+    expect(out).toContain(
+      "railway-axi deployments --service 'my web' --environment=-staging --limit 1",
+    );
+    expect(out).toContain(
+      `railway-axi logs --build ${NEW_ID} --service 'my web' --environment=-staging`,
+    );
+  });
+
+  it("quotes the scope in the refusal hints", async () => {
+    json.mockRejectedValueOnce(
+      mapRailwayError("Deployment cannot be redeployed", 1),
+    );
+    await expect(
+      redeployCommand(["--service", "my web"]),
+    ).rejects.toMatchObject({
+      suggestions: expect.arrayContaining([
+        "Or run `railway-axi redeploy --service 'my web' --from-source` to deploy from the source instead",
+      ]),
+    });
+  });
+});
