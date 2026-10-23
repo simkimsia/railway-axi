@@ -476,7 +476,10 @@ function parseOptions(
             ? rest[++i]
             : undefined;
       if (kind === "path" && value !== undefined) {
-        parsed.paths.push({ path: value, stdin: name === "date" && letter === "f" });
+        parsed.paths.push({
+          path: value,
+          stdin: name === "date" && letter === "f",
+        });
       }
       break;
     }
@@ -529,10 +532,7 @@ function checkPath(path: string, scope: Scope, stdin: boolean): void {
 
 /** Rules that need the parsed options: streaming, clock setting, no directory. */
 function checkParsed(name: string, parsed: ParsedOptions, scope: Scope): void {
-  if (
-    (name === "ls" || name === "du") &&
-    parsed.operands.length === 0
-  ) {
+  if ((name === "ls" || name === "du") && parsed.operands.length === 0) {
     throw refuse(
       `\`${name}\` needs a directory: the remote working directory is unknown`,
       scope,

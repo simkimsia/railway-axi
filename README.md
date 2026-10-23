@@ -89,16 +89,28 @@ new deployment id and status.
 `free`, `date`, `pwd`, `whoami`, `hostname`), and the whole line is checked
 before any railway call: shell operators, quotes, globs and substitutions are
 refused (one command per call), as are `env`/`printenv` and paths that hold
-secrets such as `/proc/*/environ`, `.env` and `/run/secrets` (run
+secrets such as `/proc/*/environ`, `.env`, `.envrc` and `/run/secrets` (run
 `variables list` for names). File commands (`ls`, `cat`, `head`, `tail`, `wc`,
-`stat`, `du`, and `date -f`/`-r`) only touch absolute paths under `/app`,
+`stat`, `du`, and path-reading options such as `date -f`/`-r`) accept only
+absolute paths in the following trees or single-file set: `/app`,
 `/var/log` and `/sys/fs/cgroup`, plus `/etc/os-release`, a few system-wide
 `/proc` files (`meminfo`, `loadavg`, `uptime`, `cpuinfo`, `version`) and
-`/proc/<pid>/{cmdline,status,stat,statm,limits}`. Relative paths are refused
-because the container's working directory is unknown (run `-- pwd` first), and
-so is any `..`. The `du` and `wc` option `--files0-from` is refused because
-the filenames inside its list cannot be checked; name paths directly instead. For anything else the error points at plain `railway ssh`. stdout is capped at `--lines` (default 100) and each line at
-300 characters.
+`/proc/<pid>/{cmdline,status,stat,statm,limits}` (`<pid>` is digits or `self`).
+Relative paths and bare `ls`/`du` are refused because the container's working
+directory is unknown (run `railway-axi ssh -- pwd` first). Any `..` path
+component is refused, even within an allowed tree, because symlinks can make
+it escape that tree. `-` is accepted as stdin only for `cat`, `head`, `tail`,
+`wc` operands and `date -f`/`--file`; stdin is closed. The `du` and `wc` option
+`--files0-from`, including abbreviations, is refused because the filenames
+inside its list cannot be checked; name paths directly instead.
+
+These checks constrain path spellings, not resolved symlink targets: a symlink
+or an innocently named credential file under `/app` remains an accepted risk.
+Railway injects variables as environment values, not files. `/tmp` is excluded
+because apps may write credentials there; the `/proc` tree is excluded because
+its process links and memory files can expose other files or secrets. For
+paths outside the allowlist, use plain `railway ssh`. stdout is capped at
+`--lines` (default 100) and each line at 300 characters.
 
 Set `AXI_DEBUG=1` to print each `railway` argv the axi forwards on stderr, one
 line per call, ready to rerun against the plain CLI. Values passed to
