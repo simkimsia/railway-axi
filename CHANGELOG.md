@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/simkimsia/railway-axi/compare/railway-axi-v0.1.3...railway-axi-v0.1.4) (2026-10-30)
+
+
+### Bug Fixes
+
+* **ssh:** allow tail -c+5 / -c-5 and document refused glued counts ([ad9c67c](https://github.com/simkimsia/railway-axi/commit/ad9c67c2169e3a40164f3bf584437e56276c005a)), closes [#39](https://github.com/simkimsia/railway-axi/issues/39)
+
 ## [0.1.3](https://github.com/simkimsia/railway-axi/compare/railway-axi-v0.1.2...railway-axi-v0.1.3) (2026-10-23)
 
 
