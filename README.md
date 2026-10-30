@@ -102,7 +102,10 @@ component is refused, even within an allowed tree, because symlinks can make
 it escape that tree. `-` is accepted as stdin only for `cat`, `head`, `tail`,
 `wc` operands and `date -f`/`--file`; stdin is closed. The `du` and `wc` option
 `--files0-from`, including abbreviations, is refused because the filenames
-inside its list cannot be checked; name paths directly instead.
+inside its list cannot be checked; name paths directly instead. `head`/`tail`
+counts glued to a unit letter (`-5c`, `tail -cf`) are refused because the next
+word would escape the path check; write `-n N` or `-c N` with a space
+(`tail -c+5` and a bare `-50` also work).
 
 These checks constrain path spellings, not resolved symlink targets: a symlink
 or an innocently named credential file under `/app` remains an accepted risk.

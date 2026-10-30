@@ -228,13 +228,15 @@ export function parseSshCommand(tokens: string[], scope: Scope): SshCommand {
  * F`: follow). There the count is part of the word and the NEXT word is a
  * file, while getopt-style parsing would take `c` as an option whose value is
  * that next word, so the file would escape the path check. Such words are
- * refused; `-n N`, `-c N` and a bare `-<digits>` (`-50`) still work.
+ * refused; `-n N`, `-c N`, a bare `-<digits>` (`-50`) and an attached signed
+ * count (`-c+5`, `-c-5`: tail reads those as `-c` with value `+5`/`-5`) still
+ * work.
  */
 function checkObsoleteCounts(name: string, rest: string[], scope: Scope): void {
   if (name !== "head" && name !== "tail") return;
   const obsolete = rest.find(
     (w) =>
-      /^-\d+[A-Za-z]/.test(w) || (name === "tail" && /^-[bcl][^0-9]/.test(w)),
+      /^-\d+[A-Za-z]/.test(w) || (name === "tail" && /^-[bcl][^0-9+-]/.test(w)),
   );
   if (obsolete !== undefined) {
     throw refuse(
